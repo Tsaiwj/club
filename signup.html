@@ -209,6 +209,21 @@
         line-height: 1.8;
       }
 
+      .member-status {
+        margin: 12px 0 6px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #f9fafb;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.7;
+      }
+
+      .member-status strong {
+        color: var(--text);
+      }
+
       input.identity-count {
         text-align: center;
       }
@@ -399,9 +414,9 @@
         const event = result.event;
         const registration = result.registration;
         const registrationList = result.registrationList || [];
+        const unregisteredMemberList = result.unregisteredMemberList || [];
         const peopleCount = registration && registration.status === "已報名" ? String(registration.peopleCount) : "";
         const note = registration && registration.status === "已報名" ? registration.note : "";
-        const quotaText = event.quota ? `${result.registeredCount} / ${event.quota}` : `${result.registeredCount}`;
         const identityPlaceholder = currentMember && currentMember.name
           ? `以${currentMember.name}的身分留言`
           : "";
@@ -412,6 +427,7 @@
               <h2 class="event-title">${registration && registration.status === "已報名" ? "修改報名" : "我要報名"}</h2>
               <label for="peopleCount">報名人數</label>
               <input id="peopleCount" class="identity-count" type="number" min="1" max="99" value="${escapeAttr(peopleCount)}" placeholder="${escapeAttr(identityPlaceholder)}">
+              ${renderUnregisteredMemberList(unregisteredMemberList)}
               <label for="note">備註</label>
               <textarea id="note" placeholder="例如：素食 1 位">${escapeHtml(note)}</textarea>
               <div class="actions">
@@ -429,16 +445,16 @@
               <h2 class="event-title">${escapeHtml(event.title)}</h2>
               <p class="meta">日期：${escapeHtml(event.dateText)} ${escapeHtml(event.timeText)}</p>
               <p class="meta">地點：${escapeHtml(event.location)}</p>
+              ${event.address ? `<p class="meta">地址：${escapeHtml(event.address)}</p>` : ""}
               ${renderNavigationLine(event)}
               <p class="meta">報名期間：${escapeHtml(event.registerStartText)} ~ ${escapeHtml(event.registerEndText)}</p>
-              <p class="meta">報名人數：${escapeHtml(quotaText)}</p>
               <p class="meta">狀態：${escapeHtml(event.status || "未設定")}</p>
               <div class="description">${escapeHtml(event.description)}</div>
             </div>
           </article>
           ${registration && registration.status === "已報名" ? `
             <div class="notice">
-              你已報名此活動，目前人數 ${registration.peopleCount} 人。
+              你已報名此活動，目前總報名人數 ${result.registeredCount} 人。
               ${renderRegistrationList(registrationList)}
             </div>
           ` : `
@@ -486,8 +502,9 @@
       }
 
       function renderNavigationLine(event) {
-        if (!event.location && !event.mapUrl) return "";
-        const url = event.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`;
+        const query = event.address || event.location || "";
+        if (!query && !event.mapUrl) return "";
+        const url = event.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
         return `
           <p class="meta">
@@ -507,6 +524,27 @@
         }).join("、");
 
         return `<div class="registration-list">${escapeHtml(text)}</div>`;
+      }
+
+      function renderUnregisteredMemberList(members) {
+        if (!members || !members.length) {
+          return `
+            <div class="member-status">
+              <strong>尚未報名：</strong>目前已綁定會員皆已報名。
+            </div>
+          `;
+        }
+
+        const names = members
+          .map(member => member.name)
+          .filter(Boolean)
+          .join("、");
+
+        return `
+          <div class="member-status">
+            <strong>尚未報名：</strong>${escapeHtml(names || "目前沒有可顯示的會員")}
+          </div>
+        `;
       }
 
       function renderNeedVerifyOrError(result) {
