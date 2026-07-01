@@ -15,6 +15,7 @@
         --primary: #0f7b63;
         --danger: #b42318;
         --warning: #8a5a00;
+        --link: #0f5ea8;
       }
 
       * {
@@ -102,6 +103,18 @@
         font-size: 14px;
       }
 
+      .map-link {
+        color: var(--link);
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .map-link:after {
+        content: " 導航";
+        font-size: 12px;
+        font-weight: 700;
+      }
+
       .description {
         white-space: pre-wrap;
       }
@@ -129,6 +142,11 @@
       textarea {
         min-height: 84px;
         resize: vertical;
+      }
+
+      textarea.identity-note::placeholder {
+        color: #9aa3af;
+        text-align: center;
       }
 
       .actions {
@@ -187,6 +205,15 @@
         color: var(--warning);
       }
 
+      .registration-list {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.8;
+      }
+
       .small {
         color: var(--muted);
         font-size: 13px;
@@ -219,6 +246,7 @@
       let idToken = "";
       let currentPage = new URLSearchParams(location.search).get("page") || "events";
       let currentEventId = new URLSearchParams(location.search).get("eventId") || "";
+      let currentMember = null;
 
       document.addEventListener("DOMContentLoaded", init);
 
@@ -268,6 +296,7 @@
         }
 
         if (state.bound) {
+          currentMember = state.member;
           setView(`
             <div class="notice">
               <strong>${escapeHtml(state.member.name)}</strong>，你已完成會員驗證。
@@ -308,6 +337,7 @@
           return;
         }
 
+        currentMember = result.member;
         setView(`
           <div class="notice">
             ${escapeHtml(result.message)}
@@ -327,6 +357,7 @@
           return;
         }
 
+        currentMember = result.member;
         if (!result.events.length) {
           setView(`<div class="empty">目前沒有可顯示的活動。</div>`);
           return;
@@ -359,11 +390,16 @@
           return;
         }
 
+        currentMember = result.member;
         const event = result.event;
         const registration = result.registration;
+        const registrationList = result.registrationList || [];
         const peopleCount = registration && registration.status === "已報名" ? registration.peopleCount : 1;
         const note = registration && registration.status === "已報名" ? registration.note : "";
         const quotaText = event.quota ? `${result.registeredCount} / ${event.quota}` : `${result.registeredCount}`;
+        const notePlaceholder = currentMember && currentMember.name
+          ? `以${currentMember.name}的身分留言\n例如：素食 1 位`
+          : "例如：素食 1 位";
 
         const formHtml = result.canRegister ? `
           <div class="card">
@@ -372,7 +408,7 @@
               <label for="peopleCount">報名人數</label>
               <input id="peopleCount" type="number" min="1" max="99" value="${escapeAttr(String(peopleCount))}">
               <label for="note">備註</label>
-              <textarea id="note" placeholder="例如：素食 1 位">${escapeHtml(note)}</textarea>
+              <textarea id="note" class="identity-note" placeholder="${escapeAttr(notePlaceholder)}">${escapeHtml(note)}</textarea>
               <div class="actions">
                 <button class="primary full" type="button" onclick="submitRegistration()">儲存報名</button>
                 ${registration && registration.status === "已報名" ? `<button class="danger" type="button" onclick="submitCancel()">取消報名</button>` : ""}
@@ -388,13 +424,24 @@
               <h2 class="event-title">${escapeHtml(event.title)}</h2>
               <p class="meta">日期：${escapeHtml(event.dateText)} ${escapeHtml(event.timeText)}</p>
               <p class="meta">地點：${escapeHtml(event.location)}</p>
+              ${renderNavigationLine(event)}
               <p class="meta">報名期間：${escapeHtml(event.registerStartText)} ~ ${escapeHtml(event.registerEndText)}</p>
               <p class="meta">報名人數：${escapeHtml(quotaText)}</p>
               <p class="meta">狀態：${escapeHtml(event.status || "未設定")}</p>
               <div class="description">${escapeHtml(event.description)}</div>
             </div>
           </article>
-          ${registration && registration.status === "已報名" ? `<div class="notice">你已報名此活動，目前人數 ${registration.peopleCount} 人。</div>` : ""}
+          ${registration && registration.status === "已報名" ? `
+            <div class="notice">
+              你已報名此活動，目前人數 ${registration.peopleCount} 人。
+              ${renderRegistrationList(registrationList)}
+            </div>
+          ` : `
+            <div class="notice">
+              目前已報名 ${result.registeredCount} 人。
+              ${renderRegistrationList(registrationList)}
+            </div>
+          `}
           ${registration && registration.status === "已取消" ? `<div class="notice warning">你曾取消此活動報名，可重新送出報名。</div>` : ""}
           ${formHtml}
         `);
@@ -431,6 +478,30 @@
         }
 
         await renderEvent(currentEventId);
+      }
+
+      function renderNavigationLine(event) {
+        if (!event.location && !event.mapUrl) return "";
+        const url = event.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`;
+
+        return `
+          <p class="meta">
+            導航：<a class="map-link" href="${escapeAttr(url)}" target="_blank" rel="noopener">開啟地圖</a>
+          </p>
+        `;
+      }
+
+      function renderRegistrationList(registrations) {
+        if (!registrations || !registrations.length) {
+          return `<div class="registration-list">目前尚無報名名單。</div>`;
+        }
+
+        const text = registrations.map(item => {
+          const note = item.note ? `，${item.note}` : "";
+          return `${item.name}(${item.peopleCount}位${note})`;
+        }).join("、");
+
+        return `<div class="registration-list">${escapeHtml(text)}</div>`;
       }
 
       function renderNeedVerifyOrError(result) {
@@ -540,3 +611,4 @@
     </script>
   </body>
 </html>
+
