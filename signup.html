@@ -144,11 +144,6 @@
         resize: vertical;
       }
 
-      textarea.identity-note::placeholder {
-        color: #9aa3af;
-        text-align: center;
-      }
-
       .actions {
         display: flex;
         gap: 8px;
@@ -212,6 +207,16 @@
         color: var(--text);
         font-size: 14px;
         line-height: 1.8;
+      }
+
+      input.identity-count {
+        text-align: center;
+      }
+
+      input.identity-count::placeholder {
+        color: #9aa3af;
+        opacity: 1;
+        text-align: center;
       }
 
       .small {
@@ -394,21 +399,21 @@
         const event = result.event;
         const registration = result.registration;
         const registrationList = result.registrationList || [];
-        const peopleCount = registration && registration.status === "已報名" ? registration.peopleCount : 1;
+        const peopleCount = registration && registration.status === "已報名" ? String(registration.peopleCount) : "";
         const note = registration && registration.status === "已報名" ? registration.note : "";
         const quotaText = event.quota ? `${result.registeredCount} / ${event.quota}` : `${result.registeredCount}`;
-        const notePlaceholder = currentMember && currentMember.name
-          ? `以${currentMember.name}的身分留言\n例如：素食 1 位`
-          : "例如：素食 1 位";
+        const identityPlaceholder = currentMember && currentMember.name
+          ? `以${currentMember.name}的身分留言`
+          : "";
 
         const formHtml = result.canRegister ? `
           <div class="card">
             <div class="card-body">
               <h2 class="event-title">${registration && registration.status === "已報名" ? "修改報名" : "我要報名"}</h2>
               <label for="peopleCount">報名人數</label>
-              <input id="peopleCount" type="number" min="1" max="99" value="${escapeAttr(String(peopleCount))}">
+              <input id="peopleCount" class="identity-count" type="number" min="1" max="99" value="${escapeAttr(peopleCount)}" placeholder="${escapeAttr(identityPlaceholder)}">
               <label for="note">備註</label>
-              <textarea id="note" class="identity-note" placeholder="${escapeAttr(notePlaceholder)}">${escapeHtml(note)}</textarea>
+              <textarea id="note" placeholder="例如：素食 1 位">${escapeHtml(note)}</textarea>
               <div class="actions">
                 <button class="primary full" type="button" onclick="submitRegistration()">儲存報名</button>
                 ${registration && registration.status === "已報名" ? `<button class="danger" type="button" onclick="submitCancel()">取消報名</button>` : ""}
@@ -611,4 +616,3 @@
     </script>
   </body>
 </html>
-
