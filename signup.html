@@ -330,9 +330,7 @@
         setView(`
           <div class="card">
             <div class="card-body">
-              <p class="meta">請輸入社團名單中的姓名與手機完整號碼。</p>
-              <label for="memberName">姓名</label>
-              <input id="memberName" autocomplete="name" placeholder="例如：王小明">
+              <p class="meta">請輸入社團名單中的手機完整號碼。</p>
               <label for="memberPhone">手機完整號碼</label>
               <input id="memberPhone" inputmode="tel" autocomplete="tel" placeholder="例如：0912345678">
               <div class="actions">
@@ -344,11 +342,10 @@
       }
 
       async function submitVerify() {
-        const name = document.getElementById("memberName").value;
         const phone = document.getElementById("memberPhone").value;
         setView(`<div class="notice">驗證中...</div>`);
 
-        const result = await api("bindMember", { idToken, name, phone });
+        const result = await api("bindMember", { idToken, phone });
         if (!result.ok) {
           setView(`
             <div class="notice error">${escapeHtml(result.message)}</div>
