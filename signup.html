@@ -511,26 +511,74 @@
       }
 
       function renderEventImage(imageUrl) {
-        const src = normalizeImageUrl(imageUrl);
-        if (!src) return "";
-        return `<img class="event-image" src="${escapeAttr(src)}" alt="">`;
+        const candidates = getImageUrlCandidates(imageUrl);
+        if (!candidates.length) return "";
+
+        return `
+          <img
+            class="event-image"
+            src="${escapeAttr(candidates[0])}"
+            data-image-index="0"
+            data-image-candidates="${escapeAttr(candidates.join("|"))}"
+            alt=""
+            referrerpolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
+            onerror="handleEventImageError(this)"
+          >
+        `;
       }
 
-      function normalizeImageUrl(imageUrl) {
+      function handleEventImageError(img) {
+        const candidates = String(img.dataset.imageCandidates || "")
+          .split("|")
+          .filter(Boolean);
+        const currentIndex = parseInt(img.dataset.imageIndex || "0", 10) || 0;
+        const nextIndex = currentIndex + 1;
+
+        if (nextIndex < candidates.length) {
+          img.dataset.imageIndex = String(nextIndex);
+          img.src = candidates[nextIndex];
+          return;
+        }
+
+        img.remove();
+      }
+
+      function getImageUrlCandidates(imageUrl) {
         const url = String(imageUrl || "").trim();
-        if (!url) return "";
+        if (!url) return [];
 
-        const driveFileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-        if (driveFileMatch && driveFileMatch[1]) {
-          return `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveFileMatch[1])}&sz=w1200`;
+        const driveFileId = getGoogleDriveFileId(url);
+        if (driveFileId) {
+          const id = encodeURIComponent(driveFileId);
+          return [
+            `https://drive.google.com/thumbnail?id=${id}&sz=w1200`,
+            `https://lh3.googleusercontent.com/d/${id}=w1200`,
+            `https://drive.google.com/uc?export=view&id=${id}`,
+            `https://drive.usercontent.google.com/download?id=${id}&export=view&authuser=0`
+          ];
         }
 
-        const driveOpenMatch = url.match(/[?&]id=([^&]+)/);
-        if (url.indexOf("drive.google.com") !== -1 && driveOpenMatch && driveOpenMatch[1]) {
-          return `https://drive.google.com/thumbnail?id=${encodeURIComponent(decodeURIComponent(driveOpenMatch[1]))}&sz=w1200`;
+        return [url];
+      }
+
+      function getGoogleDriveFileId(url) {
+        if (url.indexOf("drive.google.com") === -1 && url.indexOf("drive.usercontent.google.com") === -1) {
+          return "";
         }
 
-        return url;
+        const fileMatch = url.match(/\/file\/d\/([^/?#]+)/);
+        if (fileMatch && fileMatch[1]) {
+          return decodeURIComponent(fileMatch[1]);
+        }
+
+        const idMatch = url.match(/[?&]id=([^&#]+)/);
+        if (idMatch && idMatch[1]) {
+          return decodeURIComponent(idMatch[1]);
+        }
+
+        return "";
       }
 
       function renderRegistrationList(registrations) {
