@@ -267,6 +267,7 @@
       let currentPage = new URLSearchParams(location.search).get("page") || "events";
       let currentEventId = new URLSearchParams(location.search).get("eventId") || "";
       let currentMember = null;
+      let clubShareMessages = [];
 
       document.addEventListener("DOMContentLoaded", init);
 
@@ -295,6 +296,8 @@
 
           if (currentPage === "verify") {
             await renderVerify();
+          } else if (currentPage === "shareClub") {
+            await renderClubShare();
           } else if (currentPage === "event" && currentEventId) {
             await renderEvent(currentEventId);
           } else {
@@ -496,6 +499,78 @@
         }
 
         await renderEvent(currentEventId);
+      }
+
+      async function renderClubShare() {
+        setTitle("社務轉分享", false);
+        setView(`<div class="notice">載入分享內容中...</div>`);
+
+        const result = await api("getClubShareMessages", {});
+        if (!result.ok) {
+          renderError(result.message);
+          return;
+        }
+
+        clubShareMessages = result.messages || [];
+        if (!clubShareMessages.length) {
+          renderError("目前沒有可分享的卡片內容。");
+          return;
+        }
+
+        setView(`
+          <div class="card">
+            <div class="card-body">
+              <h2 class="event-title">社務資料轉分享</h2>
+              <p class="meta">將分享社團基本資料與年度職務兩張卡片。</p>
+              <div class="actions">
+                <button class="danger full" type="button" onclick="shareClubCards()">選擇分享對象</button>
+              </div>
+            </div>
+          </div>
+        `);
+      }
+
+      async function shareClubCards() {
+        try {
+          if (!liff.isApiAvailable("shareTargetPicker")) {
+            setView(`
+              <div class="notice error">
+                此環境無法使用分享選擇器。請確認 LIFF 後台已啟用 shareTargetPicker，並用 LINE 開啟此頁。
+              </div>
+              <button class="secondary full" type="button" onclick="renderClubShare()">重新載入</button>
+            `);
+            return;
+          }
+
+          setView(`<div class="notice">正在開啟分享選擇器...</div>`);
+          const result = await liff.shareTargetPicker(clubShareMessages, { isMultiple: true });
+
+          if (result && result.status === "success") {
+            setView(`
+              <div class="notice">已送出分享。</div>
+              <button class="primary full" type="button" onclick="closeLiffWindow()">完成</button>
+            `);
+            return;
+          }
+
+          setView(`
+            <div class="notice warning">尚未送出分享。</div>
+            <button class="danger full" type="button" onclick="shareClubCards()">重新選擇分享對象</button>
+          `);
+        } catch (err) {
+          setView(`
+            <div class="notice error">${escapeHtml(errorText(err))}</div>
+            <button class="secondary full" type="button" onclick="renderClubShare()">重新載入</button>
+          `);
+        }
+      }
+
+      function closeLiffWindow() {
+        if (liff.isInClient()) {
+          liff.closeWindow();
+          return;
+        }
+        goEvents();
       }
 
       function renderNavigationLine(event) {
