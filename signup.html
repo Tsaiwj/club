@@ -382,7 +382,7 @@
 
         const cards = result.events.map(event => `
           <article class="card">
-            ${event.imageUrl ? `<img class="event-image" src="${escapeAttr(event.imageUrl)}" alt="">` : ""}
+            ${renderEventImage(event.imageUrl)}
             <div class="card-body">
               <h2 class="event-title">${escapeHtml(event.title)}</h2>
               <p class="meta">${escapeHtml(event.dateText)} ${escapeHtml(event.timeText)}</p>
@@ -437,7 +437,7 @@
 
         setView(`
           <article class="card">
-            ${event.imageUrl ? `<img class="event-image" src="${escapeAttr(event.imageUrl)}" alt="">` : ""}
+            ${renderEventImage(event.imageUrl)}
             <div class="card-body">
               <h2 class="event-title">${escapeHtml(event.title)}</h2>
               <p class="meta">日期：${escapeHtml(event.dateText)} ${escapeHtml(event.timeText)}</p>
@@ -508,6 +508,29 @@
             導航：<a class="map-link" href="${escapeAttr(url)}" target="_blank" rel="noopener">開啟地圖</a>
           </p>
         `;
+      }
+
+      function renderEventImage(imageUrl) {
+        const src = normalizeImageUrl(imageUrl);
+        if (!src) return "";
+        return `<img class="event-image" src="${escapeAttr(src)}" alt="">`;
+      }
+
+      function normalizeImageUrl(imageUrl) {
+        const url = String(imageUrl || "").trim();
+        if (!url) return "";
+
+        const driveFileMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+        if (driveFileMatch && driveFileMatch[1]) {
+          return `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveFileMatch[1])}&sz=w1200`;
+        }
+
+        const driveOpenMatch = url.match(/[?&]id=([^&]+)/);
+        if (url.indexOf("drive.google.com") !== -1 && driveOpenMatch && driveOpenMatch[1]) {
+          return `https://drive.google.com/thumbnail?id=${encodeURIComponent(decodeURIComponent(driveOpenMatch[1]))}&sz=w1200`;
+        }
+
+        return url;
       }
 
       function renderRegistrationList(registrations) {
