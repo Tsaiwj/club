@@ -309,8 +309,8 @@
       }
 
       async function renderVerify() {
-        setTitle("會員驗證", false);
-        setView(`<div class="notice">檢查會員狀態...</div>`);
+        setTitle("社友/寶眷驗證", false);
+        setView(`<div class="notice">檢查社友/寶眷狀態...</div>`);
 
         const state = await api("getMemberState", { idToken });
         if (!state.ok) {
@@ -322,8 +322,8 @@
           currentMember = state.member;
           setView(`
             <div class="notice">
-              <strong>${escapeHtml(state.member.name)}</strong>，你已完成會員驗證。
-              <div class="small">會員ID：${escapeHtml(state.member.memberId)}</div>
+              <strong>${escapeHtml(state.member.name)}</strong>，你已完成社友/寶眷驗證。
+              <div class="small">資料ID：${escapeHtml(state.member.memberId)}</div>
             </div>
             <button class="primary full" type="button" onclick="goEvents()">查看活動列表</button>
           `);
@@ -361,7 +361,7 @@
         setView(`
           <div class="notice">
             ${escapeHtml(result.message)}
-            <div class="small">會員：${escapeHtml(result.member.name)}</div>
+            <div class="small">驗證身分：${escapeHtml(result.member.name)}</div>
           </div>
           <button class="primary full" type="button" onclick="goEvents()">查看活動列表</button>
         `);
@@ -692,10 +692,10 @@
 
       function renderNeedVerifyOrError(result) {
         if (result.code === "NOT_BOUND") {
-          setTitle("需要會員驗證", false);
+          setTitle("需要社友/寶眷驗證", false);
           setView(`
             <div class="notice warning">${escapeHtml(result.message)}</div>
-            <button class="primary full" type="button" onclick="goVerify()">前往會員驗證</button>
+            <button class="primary full" type="button" onclick="goVerify()">前往社友/寶眷驗證</button>
           `);
           return;
         }
