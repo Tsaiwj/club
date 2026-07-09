@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>新竹西南扶輪社</title>
+    <title>社團活動報名</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
       :root {
@@ -323,7 +323,7 @@
           setView(`
             <div class="notice">
               <strong>${escapeHtml(state.member.name)}</strong>，你已完成社友/寶眷驗證。
-              <div class="small">資料ID：${escapeHtml(state.member.memberId)}</div>
+              <div class="small">驗證手機: ${escapeHtml(state.member.phone || "")}</div>
             </div>
             <button class="primary full" type="button" onclick="goEvents()">查看活動列表</button>
           `);
@@ -362,6 +362,7 @@
           <div class="notice">
             ${escapeHtml(result.message)}
             <div class="small">驗證身分：${escapeHtml(result.member.name)}</div>
+            <div class="small">驗證手機: ${escapeHtml(result.member.phone || "")}</div>
           </div>
           <button class="primary full" type="button" onclick="goEvents()">查看活動列表</button>
         `);
