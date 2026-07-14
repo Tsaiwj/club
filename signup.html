@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>社團活動報名</title>
+    <title>新竹西南扶輪社</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
       :root {
@@ -266,6 +266,7 @@
       let idToken = "";
       let currentPage = new URLSearchParams(location.search).get("page") || "events";
       let currentEventId = new URLSearchParams(location.search).get("eventId") || "";
+      let currentDirectoryMemberKey = new URLSearchParams(location.search).get("memberKey") || "";
       let currentMember = null;
       let clubShareMessages = [];
       let personalShareMessages = [];
@@ -301,6 +302,8 @@
             await renderClubShare();
           } else if (currentPage === "shareProfile") {
             await renderPersonalShare();
+          } else if (currentPage === "shareDirectoryProfile" && currentDirectoryMemberKey) {
+            await renderDirectoryProfileShare();
           } else if (currentPage === "event" && currentEventId) {
             await renderEvent(currentEventId);
           } else {
@@ -598,6 +601,39 @@
         `);
       }
 
+      async function renderDirectoryProfileShare() {
+        setTitle("社友資料轉分享", false);
+        setView(`<div class="notice">載入指定社友的資料卡片中...</div>`);
+
+        const result = await api("getDirectoryProfileShareMessages", {
+          idToken,
+          memberKey: currentDirectoryMemberKey
+        });
+        if (!result.ok) {
+          renderNeedVerifyOrError(result);
+          return;
+        }
+
+        personalShareMessages = result.messages || [];
+        if (!personalShareMessages.length) {
+          renderError("目前沒有可分享的社友資料卡片。");
+          return;
+        }
+
+        const memberName = result.memberName || "這位社友";
+        setView(`
+          <div class="card">
+            <div class="card-body">
+              <h2 class="event-title">${escapeHtml(memberName)} 資料轉分享</h2>
+              <p class="meta">將分享這位社友的兩張個人資料卡片。</p>
+              <div class="actions">
+                <button class="danger full" type="button" onclick="sharePersonalCards()">選擇分享對象</button>
+              </div>
+            </div>
+          </div>
+        `);
+      }
+
       async function sharePersonalCards() {
         try {
           if (!liff.isApiAvailable("shareTargetPicker")) {
@@ -605,7 +641,7 @@
               <div class="notice error">
                 此環境無法使用分享選擇器。請確認 LIFF 後台已啟用 shareTargetPicker，並用 LINE 開啟此頁。
               </div>
-              <button class="secondary full" type="button" onclick="renderPersonalShare()">重新載入</button>
+              <button class="secondary full" type="button" onclick="reloadPersonalShare()">重新載入</button>
             `);
             return;
           }
@@ -628,9 +664,17 @@
         } catch (err) {
           setView(`
             <div class="notice error">${escapeHtml(errorText(err))}</div>
-            <button class="secondary full" type="button" onclick="renderPersonalShare()">重新載入</button>
+            <button class="secondary full" type="button" onclick="reloadPersonalShare()">重新載入</button>
           `);
         }
+      }
+
+      function reloadPersonalShare() {
+        if (currentPage === "shareDirectoryProfile") {
+          renderDirectoryProfileShare();
+          return;
+        }
+        renderPersonalShare();
       }
 
       function closeLiffWindow() {
