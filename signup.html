@@ -260,7 +260,7 @@
     <script>
       const APP_CONFIG = {
         liffId: "2010545073-ZLJqZtJk",
-        apiUrl: "https://script.google.com/macros/s/AKfycbzma_RNpwXmC9m3JoRHYtUMzP808fF8F-9i34hPpgrXSizZQrXA1hc0oMzQ0hYtGXy_ow/exec"
+        apiUrl: "PASTE_APPS_SCRIPT_WEB_APP_URL_HERE"
       };
 
       let idToken = "";
@@ -304,6 +304,8 @@
             await renderPersonalShare();
           } else if (currentPage === "shareDirectoryProfile" && currentDirectoryMemberKey) {
             await renderDirectoryProfileShare();
+          } else if (currentPage === "shareExecutiveSecretary") {
+            await renderExecutiveSecretaryShare();
           } else if (currentPage === "event" && currentEventId) {
             await renderEvent(currentEventId);
           } else {
@@ -315,8 +317,8 @@
       }
 
       async function renderVerify() {
-        setTitle("社友/寶眷驗證", false);
-        setView(`<div class="notice">檢查社友/寶眷狀態...</div>`);
+        setTitle("社友/寶眷/執行秘書驗證", false);
+        setView(`<div class="notice">檢查身分綁定狀態...</div>`);
 
         const state = await api("getMemberState", { idToken });
         if (!state.ok) {
@@ -328,7 +330,7 @@
           currentMember = state.member;
           setView(`
             <div class="notice">
-              <strong>${escapeHtml(state.member.name)}</strong>，你已完成社友/寶眷驗證。
+              <strong>${escapeHtml(state.member.name)}</strong>，你已完成身分驗證。
               <div class="small">驗證手機: ${escapeHtml(state.member.phone || "")}</div>
             </div>
             <button class="primary full" type="button" onclick="goEvents()">查看活動列表</button>
@@ -339,7 +341,7 @@
         setView(`
           <div class="card">
             <div class="card-body">
-              <p class="meta">請輸入社團名單中的手機完整號碼。</p>
+              <p class="meta">請輸入社團通訊錄或執行秘書資訊中的手機完整號碼。</p>
               <label for="memberPhone">手機完整號碼</label>
               <input id="memberPhone" inputmode="tel" autocomplete="tel" placeholder="例如：0912345678">
               <div class="actions">
@@ -588,11 +590,13 @@
           return;
         }
 
+        const pageCount = Number(result.pageCount || 2);
+        const pageDescription = pageCount === 1 ? "一張" : "兩張";
         setView(`
           <div class="card">
             <div class="card-body">
               <h2 class="event-title">個人資料轉分享</h2>
-              <p class="meta">將分享你的兩張個人資料卡片。</p>
+              <p class="meta">將分享你的${pageDescription}個人資料卡片。</p>
               <div class="actions">
                 <button class="danger full" type="button" onclick="sharePersonalCards()">選擇分享對象</button>
               </div>
@@ -626,6 +630,36 @@
             <div class="card-body">
               <h2 class="event-title">${escapeHtml(memberName)} 資料轉分享</h2>
               <p class="meta">將分享這位社友的兩張個人資料卡片。</p>
+              <div class="actions">
+                <button class="danger full" type="button" onclick="sharePersonalCards()">選擇分享對象</button>
+              </div>
+            </div>
+          </div>
+        `);
+      }
+
+      async function renderExecutiveSecretaryShare() {
+        setTitle("執行秘書資料轉分享", false);
+        setView(`<div class="notice">載入執行秘書名片中...</div>`);
+
+        const result = await api("getExecutiveSecretaryShareMessages", { idToken });
+        if (!result.ok) {
+          renderNeedVerifyOrError(result);
+          return;
+        }
+
+        personalShareMessages = result.messages || [];
+        if (!personalShareMessages.length) {
+          renderError("目前沒有可分享的執行秘書名片。");
+          return;
+        }
+
+        const memberName = result.memberName || "執行秘書";
+        setView(`
+          <div class="card">
+            <div class="card-body">
+              <h2 class="event-title">${escapeHtml(memberName)} 名片轉分享</h2>
+              <p class="meta">將分享這一張執行秘書名片。</p>
               <div class="actions">
                 <button class="danger full" type="button" onclick="sharePersonalCards()">選擇分享對象</button>
               </div>
@@ -672,6 +706,10 @@
       function reloadPersonalShare() {
         if (currentPage === "shareDirectoryProfile") {
           renderDirectoryProfileShare();
+          return;
+        }
+        if (currentPage === "shareExecutiveSecretary") {
+          renderExecutiveSecretaryShare();
           return;
         }
         renderPersonalShare();
