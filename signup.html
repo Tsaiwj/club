@@ -103,6 +103,31 @@
         font-size: 14px;
       }
 
+      .event-status-line {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .status-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 15px;
+        font-weight: 800;
+        line-height: 1.35;
+      }
+
+      .status-badge.open {
+        background: #df3340;
+        color: #ffffff;
+      }
+
+      .status-badge.neutral {
+        background: #e5e7eb;
+        color: #374151;
+      }
+
       .map-link {
         color: var(--link);
         font-weight: 700;
@@ -399,7 +424,7 @@
               <h2 class="event-title">${escapeHtml(event.title)}</h2>
               <p class="meta">${escapeHtml(event.dateText)} ${escapeHtml(event.timeText)}</p>
               <p class="meta">${escapeHtml(event.location)}</p>
-              <p class="meta">狀態：${escapeHtml(event.status || "未設定")}</p>
+              ${renderEventStatus(event.status)}
               <button class="primary full" type="button" onclick="goEvent('${escapeJs(event.eventId)}')">查看 / 報名</button>
             </div>
           </article>
@@ -457,7 +482,7 @@
               ${event.address ? `<p class="meta">地址：${escapeHtml(event.address)}</p>` : ""}
               ${renderNavigationLine(event)}
               <p class="meta">報名期間：${escapeHtml(event.registerStartText)} ~ ${escapeHtml(event.registerEndText)}</p>
-              <p class="meta">狀態：${escapeHtml(event.status || "未設定")}</p>
+              ${renderEventStatus(event.status)}
               <div class="description">${escapeHtml(event.description)}</div>
             </div>
           </article>
@@ -735,6 +760,22 @@
         `;
       }
 
+      function renderEventStatus(status) {
+        const value = String(status || "").trim();
+        if (value === "開放報名") {
+          return `
+            <p class="meta event-status-line">
+              狀態：<span class="status-badge open">活動報名中</span>
+            </p>
+          `;
+        }
+        return `
+          <p class="meta event-status-line">
+            狀態：<span class="status-badge neutral">${escapeHtml(value || "未設定")}</span>
+          </p>
+        `;
+      }
+
       function renderEventImage(imageUrl) {
         const candidates = getImageUrlCandidates(imageUrl);
         if (!candidates.length) return "";
@@ -823,7 +864,7 @@
         if (!members || !members.length) {
           return `
             <div class="member-status">
-              <strong>尚未報名：</strong>目前已綁定會員皆已報名。
+              <strong>尚未報名社友：</strong>目前已綁定社友皆已報名。
             </div>
           `;
         }
@@ -835,7 +876,7 @@
 
         return `
           <div class="member-status">
-            <strong>尚未報名：</strong>${escapeHtml(names || "目前沒有可顯示的會員")}
+            <strong>尚未報名社友：</strong>${escapeHtml(names || "目前沒有可顯示的社友")}
           </div>
         `;
       }
