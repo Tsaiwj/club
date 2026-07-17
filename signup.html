@@ -337,6 +337,7 @@
         apiUrl: "https://script.google.com/macros/s/AKfycbzma_RNpwXmC9m3JoRHYtUMzP808fF8F-9i34hPpgrXSizZQrXA1hc0oMzQ0hYtGXy_ow/exec"
       };
       const EVENT_CACHE_MAX_AGE_MS = 30 * 60 * 1000;
+      const EVENT_DETAIL_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
       const initialEventPeriod = getTaipeiYearMonth();
 
       let idToken = "";
@@ -350,6 +351,7 @@
       let eventCatalog = [];
       let eventYearFilter = String(initialEventPeriod.year);
       let eventMonthFilter = String(initialEventPeriod.month);
+      const eventDetailRequests = {};
 
       document.addEventListener("DOMContentLoaded", init);
 
@@ -465,6 +467,7 @@
         const cached = readEventCache();
         if (cached) {
           renderEventCatalog(cached.member, cached.events);
+          scheduleEventDetailPrefetch(cached.events);
         } else {
           setView(`<div class="notice">載入活動中...</div>`);
         }
@@ -487,6 +490,7 @@
         const freshEvents = result.events || [];
         writeEventCache(result.member, freshEvents);
         currentMember = result.member;
+        scheduleEventDetailPrefetch(freshEvents);
         if (cached && eventCatalogsMatch(cached.events, freshEvents)) {
           return;
         }
@@ -691,18 +695,171 @@
         };
       }
 
+      function scheduleEventDetailPrefetch(events) {
+        const candidates = sortEventsForDisplay(events || []).filter(event => {
+          const parts = parseEventDateParts(event.dateText);
+          const matchesYear = eventYearFilter === "all" || String(parts.year) === eventYearFilter;
+          const matchesMonth = eventMonthFilter === "all" || String(parts.month) === eventMonthFilter;
+          return matchesYear && matchesMonth;
+        }).slice(0, 2);
+
+        candidates.forEach((event, index) => {
+          if (readEventDetailCache(event.eventId)) return;
+          setTimeout(() => {
+            requestEventPageData(event.eventId).catch(() => {});
+          }, 150 + index * 250);
+        });
+      }
+
+      function requestEventPageData(eventId) {
+        const key = String(eventId || "");
+        if (eventDetailRequests[key]) return eventDetailRequests[key];
+
+        eventDetailRequests[key] = api("getEventPageData", { idToken, eventId: key }).then(result => {
+          delete eventDetailRequests[key];
+          if (result && result.ok) writeEventDetailCache(key, result);
+          return result;
+        }, err => {
+          delete eventDetailRequests[key];
+          throw err;
+        });
+        return eventDetailRequests[key];
+      }
+
+      function readEventDetailCache(eventId) {
+        const key = eventDetailCacheKey(eventId);
+        if (!key) return null;
+        try {
+          const cached = JSON.parse(localStorage.getItem(key) || "null");
+          if (!cached || !cached.savedAt || !cached.data || !cached.data.ok) return null;
+          if (Date.now() - cached.savedAt > EVENT_DETAIL_CACHE_MAX_AGE_MS) {
+            localStorage.removeItem(key);
+            return null;
+          }
+          return cached.data;
+        } catch (err) {
+          return null;
+        }
+      }
+
+      function writeEventDetailCache(eventId, data) {
+        const key = eventDetailCacheKey(eventId);
+        if (!key || !data || !data.ok) return;
+        try {
+          localStorage.setItem(key, JSON.stringify({
+            savedAt: Date.now(),
+            data: data
+          }));
+        } catch (err) {
+          // Ignore unavailable browser storage.
+        }
+      }
+
+      function clearEventDetailCache(eventId) {
+        const key = eventDetailCacheKey(eventId);
+        if (!key) return;
+        try {
+          localStorage.removeItem(key);
+        } catch (err) {
+          // Ignore unavailable browser storage.
+        }
+      }
+
+      function eventDetailCacheKey(eventId) {
+        if (!currentLineUserId || !eventId) return "";
+        return "club_event_detail_v1:" + APP_CONFIG.liffId + ":" + currentLineUserId + ":" + eventId;
+      }
+
+      function eventPageDataMatch(a, b) {
+        try {
+          return JSON.stringify(a || null) === JSON.stringify(b || null);
+        } catch (err) {
+          return false;
+        }
+      }
+
       async function renderEvent(eventId) {
         setTitle("活動詳情", true);
         currentEventId = eventId;
-        setView(`<div class="notice">載入活動中...</div>`);
+        const cached = readEventDetailCache(eventId);
+        const previewEvent = eventCatalog.find(event => String(event.eventId) === String(eventId)) || null;
+        if (cached) {
+          renderEventPage(cached);
+        } else if (previewEvent) {
+          renderEventPreview(previewEvent);
+        } else {
+          setView(`<div class="notice">載入活動中...</div>`);
+        }
 
-        const result = await api("getEventPageData", { idToken, eventId });
+        let result;
+        try {
+          result = await requestEventPageData(eventId);
+        } catch (err) {
+          if (cached) return;
+          throw err;
+        }
         if (!result.ok) {
+          clearEventDetailCache(eventId);
           renderNeedVerifyOrError(result);
           return;
         }
 
         currentMember = result.member;
+        if (cached && eventPageDataMatch(cached, result)) return;
+        if ((cached && eventCatalogsMatch([cached.event], [result.event])) ||
+            (!cached && previewEvent && eventCatalogsMatch([previewEvent], [result.event]))) {
+          renderEventDynamicContent(result);
+          return;
+        }
+        renderEventPage(result);
+      }
+
+      function renderEventArticle(event) {
+        return `
+          <article class="card">
+            ${renderEventImage(event.imageUrl)}
+            <div class="card-body">
+              <h2 class="event-title event-name">${escapeHtml(event.title)}</h2>
+              <p class="meta">日期：${escapeHtml(event.dateText)} ${escapeHtml(event.timeText)}</p>
+              <p class="meta">地點：${escapeHtml(event.location)}</p>
+              ${event.address ? `<p class="meta">地址：${escapeHtml(event.address)}</p>` : ""}
+              ${renderNavigationLine(event)}
+              <p class="meta">報名期間：${escapeHtml(event.registerStartText)} ~ ${escapeHtml(event.registerEndText)}</p>
+              ${renderEventStatus(event.status)}
+              <div class="description">${escapeHtml(event.description)}</div>
+            </div>
+          </article>
+        `;
+      }
+
+      function renderEventPreview(event) {
+        setView(`
+          ${renderEventArticle(event)}
+          <div id="eventDynamicContent">
+            <div class="notice">正在載入報名資料...</div>
+          </div>
+        `);
+      }
+
+      function renderEventPage(result) {
+        currentMember = result.member;
+        setView(`
+          ${renderEventArticle(result.event)}
+          <div id="eventDynamicContent">${buildEventDynamicHtml(result)}</div>
+        `);
+      }
+
+      function renderEventDynamicContent(result) {
+        currentMember = result.member;
+        const target = document.getElementById("eventDynamicContent");
+        if (target) {
+          target.innerHTML = buildEventDynamicHtml(result);
+          return;
+        }
+        renderEventPage(result);
+      }
+
+      function buildEventDynamicHtml(result) {
         const event = result.event;
         const registration = result.registration;
         const registrationList = result.registrationList || [];
@@ -730,20 +887,7 @@
           </div>
         ` : `<div class="notice warning">${escapeHtml(result.registerMessage)}</div>`;
 
-        setView(`
-          <article class="card">
-            ${renderEventImage(event.imageUrl)}
-            <div class="card-body">
-              <h2 class="event-title event-name">${escapeHtml(event.title)}</h2>
-              <p class="meta">日期：${escapeHtml(event.dateText)} ${escapeHtml(event.timeText)}</p>
-              <p class="meta">地點：${escapeHtml(event.location)}</p>
-              ${event.address ? `<p class="meta">地址：${escapeHtml(event.address)}</p>` : ""}
-              ${renderNavigationLine(event)}
-              <p class="meta">報名期間：${escapeHtml(event.registerStartText)} ~ ${escapeHtml(event.registerEndText)}</p>
-              ${renderEventStatus(event.status)}
-              <div class="description">${escapeHtml(event.description)}</div>
-            </div>
-          </article>
+        return `
           ${registration && registration.status === "已報名" ? `
             <div class="notice">
               你已報名此活動，目前總報名人數 ${result.registeredCount} 人。
@@ -757,7 +901,7 @@
           `}
           ${registration && registration.status === "已取消" ? `<div class="notice warning">你曾取消此活動報名，可重新送出報名。</div>` : ""}
           ${formHtml}
-        `);
+        `;
       }
 
       async function submitRegistration() {
@@ -774,6 +918,7 @@
           return;
         }
 
+        clearEventDetailCache(currentEventId);
         await renderEvent(currentEventId);
       }
 
@@ -790,6 +935,7 @@
           return;
         }
 
+        clearEventDetailCache(currentEventId);
         await renderEvent(currentEventId);
       }
 
