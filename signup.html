@@ -127,6 +127,11 @@
         border-bottom: 1px solid var(--line);
       }
 
+      .event-refresh {
+        margin: -4px 0 10px;
+        text-align: right;
+      }
+
       .event-filter label {
         margin: 0 0 5px;
         color: var(--muted);
@@ -336,8 +341,11 @@
         liffId: "2010545073-ZLJqZtJk",
         apiUrl: "https://script.google.com/macros/s/AKfycbzma_RNpwXmC9m3JoRHYtUMzP808fF8F-9i34hPpgrXSizZQrXA1hc0oMzQ0hYtGXy_ow/exec"
       };
+      const EVENT_CACHE_MAX_AGE_MS = 30 * 60 * 1000;
+      const initialEventPeriod = getTaipeiYearMonth();
 
       let idToken = "";
+      let currentLineUserId = "";
       let currentPage = new URLSearchParams(location.search).get("page") || "events";
       let currentEventId = new URLSearchParams(location.search).get("eventId") || "";
       let currentDirectoryMemberKey = new URLSearchParams(location.search).get("memberKey") || "";
@@ -345,8 +353,8 @@
       let clubShareMessages = [];
       let personalShareMessages = [];
       let eventCatalog = [];
-      let eventYearFilter = "all";
-      let eventMonthFilter = "all";
+      let eventYearFilter = String(initialEventPeriod.year);
+      let eventMonthFilter = String(initialEventPeriod.month);
 
       document.addEventListener("DOMContentLoaded", init);
 
@@ -357,7 +365,7 @@
             return;
           }
 
-          setView(`<div class="notice">正在初始化 LIFF...</div>`);
+          setView(`<div class="notice">正在連結Google資料庫，安全驗證中，請稍後...</div>`);
           await liff.init({ liffId: APP_CONFIG.liffId });
 
           if (!liff.isLoggedIn()) {
@@ -372,6 +380,10 @@
             renderError("無法取得 LINE ID Token。請確認 LIFF scope 有勾選 openid。");
             return;
           }
+          const decodedToken = typeof liff.getDecodedIDToken === "function"
+            ? liff.getDecodedIDToken()
+            : null;
+          currentLineUserId = decodedToken && decodedToken.sub ? String(decodedToken.sub) : "";
 
           if (currentPage === "verify") {
             await renderVerify();
@@ -455,24 +467,47 @@
 
       async function renderEvents() {
         setTitle("活動列表", false);
-        setView(`<div class="notice">載入活動中...</div>`);
+        const cached = readEventCache();
+        if (cached) {
+          renderEventCatalog(cached.member, cached.events, true);
+        } else {
+          setView(`<div class="notice">載入活動中...</div>`);
+        }
 
-        const result = await api("listEvents", { idToken });
+        let result;
+        try {
+          result = await api("listEvents", { idToken });
+        } catch (err) {
+          if (cached) {
+            setEventRefreshMessage("暫時無法更新，已顯示最近一次的活動資料。");
+            return;
+          }
+          throw err;
+        }
         if (!result.ok) {
+          clearEventCache();
           renderNeedVerifyOrError(result);
           return;
         }
 
-        currentMember = result.member;
-        eventCatalog = sortEventsForDisplay(result.events || []);
-        if (!result.events.length) {
+        writeEventCache(result.member, result.events || []);
+        renderEventCatalog(result.member, result.events || [], false);
+      }
+
+      function renderEventCatalog(member, events, showRefreshing) {
+        currentMember = member;
+        eventCatalog = sortEventsForDisplay(events || []);
+        if (!eventCatalog.length) {
           setView(`<div class="empty">目前沒有可顯示的活動。</div>`);
           return;
         }
 
-        const years = [...new Set(eventCatalog
+        const yearValues = eventCatalog
           .map(event => parseEventDateParts(event.dateText).year)
-          .filter(Boolean))]
+          .filter(Boolean);
+        const selectedYear = parseInt(eventYearFilter, 10);
+        if (Number.isFinite(selectedYear)) yearValues.push(selectedYear);
+        const years = [...new Set(yearValues)]
           .sort((a, b) => b - a);
         const yearOptions = years.map(year => `
           <option value="${year}" ${String(year) === eventYearFilter ? "selected" : ""}>${year}年</option>
@@ -482,6 +517,7 @@
         `).join("");
 
         setView(`
+          ${showRefreshing ? `<div id="eventRefreshNotice" class="small event-refresh">正在更新最新活動...</div>` : ""}
           <div class="event-filters" aria-label="活動篩選">
             <div class="event-filter">
               <label for="eventYearFilter">年份</label>
@@ -501,6 +537,58 @@
           <div id="eventList"></div>
         `);
         applyEventFilters();
+      }
+
+      function setEventRefreshMessage(message) {
+        const notice = document.getElementById("eventRefreshNotice");
+        if (notice) notice.textContent = message;
+      }
+
+      function readEventCache() {
+        const key = eventCacheKey();
+        if (!key) return null;
+
+        try {
+          const cached = JSON.parse(localStorage.getItem(key) || "null");
+          if (!cached || !cached.savedAt || !Array.isArray(cached.events)) return null;
+          if (Date.now() - cached.savedAt > EVENT_CACHE_MAX_AGE_MS) {
+            localStorage.removeItem(key);
+            return null;
+          }
+          return cached;
+        } catch (err) {
+          return null;
+        }
+      }
+
+      function writeEventCache(member, events) {
+        const key = eventCacheKey();
+        if (!key) return;
+
+        try {
+          localStorage.setItem(key, JSON.stringify({
+            savedAt: Date.now(),
+            member: member || null,
+            events: events || []
+          }));
+        } catch (err) {
+          // Some in-app browsers can disable persistent storage.
+        }
+      }
+
+      function clearEventCache() {
+        const key = eventCacheKey();
+        if (!key) return;
+        try {
+          localStorage.removeItem(key);
+        } catch (err) {
+          // Ignore unavailable browser storage.
+        }
+      }
+
+      function eventCacheKey() {
+        if (!currentLineUserId) return "";
+        return "club_events_v2:" + APP_CONFIG.liffId + ":" + currentLineUserId;
       }
 
       function applyEventFilters() {
@@ -582,6 +670,24 @@
           month: parseInt(match[2], 10),
           day: parseInt(match[3], 10)
         } : { year: 0, month: 0, day: 0 };
+      }
+
+      function getTaipeiYearMonth() {
+        const parts = new Intl.DateTimeFormat("en", {
+          timeZone: "Asia/Taipei",
+          year: "numeric",
+          month: "numeric"
+        }).formatToParts(new Date());
+        const values = {};
+        parts.forEach(part => {
+          if (part.type === "year" || part.type === "month") {
+            values[part.type] = parseInt(part.value, 10);
+          }
+        });
+        return {
+          year: values.year || new Date().getFullYear(),
+          month: values.month || new Date().getMonth() + 1
+        };
       }
 
       async function renderEvent(eventId) {
