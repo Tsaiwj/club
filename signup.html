@@ -16,6 +16,7 @@
         --danger: #b42318;
         --warning: #8a5a00;
         --link: #0f5ea8;
+        --rotary-blue: #17458f;
       }
 
       * {
@@ -71,6 +72,22 @@
         padding: 16px;
       }
 
+      .activity-brand {
+        border-bottom: 1px solid var(--line);
+        background: #ffffff;
+      }
+
+      .activity-brand[hidden] {
+        display: none;
+      }
+
+      .activity-brand img {
+        display: block;
+        width: 100%;
+        height: clamp(56px, 18vw, 96px);
+        object-fit: contain;
+      }
+
       .card {
         margin-bottom: 14px;
         overflow: hidden;
@@ -95,6 +112,26 @@
         margin: 0 0 8px;
         font-size: 17px;
         font-weight: 800;
+      }
+
+      .event-title.event-name {
+        color: var(--rotary-blue);
+      }
+
+      .event-filters {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 10px;
+        margin-bottom: 14px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .event-filter label {
+        margin: 0 0 5px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
       }
 
       .meta {
@@ -153,7 +190,8 @@
       }
 
       input,
-      textarea {
+      textarea,
+      select {
         width: 100%;
         min-height: 42px;
         padding: 10px 12px;
@@ -162,6 +200,10 @@
         background: #fff;
         color: var(--text);
         font: inherit;
+      }
+
+      select {
+        cursor: pointer;
       }
 
       textarea {
@@ -277,6 +319,13 @@
         <button id="backBtn" class="back" type="button" hidden onclick="goEvents()">‹</button>
         <h1 id="pageTitle" class="title">社團活動報名</h1>
       </header>
+      <div id="activityBrand" class="activity-brand" hidden>
+        <img
+          src="https://cdn.phototourl.com/free/2026-07-17-2b664617-4aea-4183-8244-c802d64bde7f.jpg"
+          alt="Rotary"
+          referrerpolicy="no-referrer"
+        >
+      </div>
       <section id="view" class="content">
         <div class="notice">載入中...</div>
       </section>
@@ -295,6 +344,9 @@
       let currentMember = null;
       let clubShareMessages = [];
       let personalShareMessages = [];
+      let eventCatalog = [];
+      let eventYearFilter = "all";
+      let eventMonthFilter = "all";
 
       document.addEventListener("DOMContentLoaded", init);
 
@@ -412,25 +464,124 @@
         }
 
         currentMember = result.member;
+        eventCatalog = sortEventsForDisplay(result.events || []);
         if (!result.events.length) {
           setView(`<div class="empty">目前沒有可顯示的活動。</div>`);
           return;
         }
 
-        const cards = result.events.map(event => `
+        const years = [...new Set(eventCatalog
+          .map(event => parseEventDateParts(event.dateText).year)
+          .filter(Boolean))]
+          .sort((a, b) => b - a);
+        const yearOptions = years.map(year => `
+          <option value="${year}" ${String(year) === eventYearFilter ? "selected" : ""}>${year}年</option>
+        `).join("");
+        const monthOptions = Array.from({ length: 12 }, (_, index) => index + 1).map(month => `
+          <option value="${month}" ${String(month) === eventMonthFilter ? "selected" : ""}>${month}月</option>
+        `).join("");
+
+        setView(`
+          <div class="event-filters" aria-label="活動篩選">
+            <div class="event-filter">
+              <label for="eventYearFilter">年份</label>
+              <select id="eventYearFilter" onchange="applyEventFilters()">
+                <option value="all" ${eventYearFilter === "all" ? "selected" : ""}>全部年份</option>
+                ${yearOptions}
+              </select>
+            </div>
+            <div class="event-filter">
+              <label for="eventMonthFilter">月份</label>
+              <select id="eventMonthFilter" onchange="applyEventFilters()">
+                <option value="all" ${eventMonthFilter === "all" ? "selected" : ""}>全部月份</option>
+                ${monthOptions}
+              </select>
+            </div>
+          </div>
+          <div id="eventList"></div>
+        `);
+        applyEventFilters();
+      }
+
+      function applyEventFilters() {
+        const yearSelect = document.getElementById("eventYearFilter");
+        const monthSelect = document.getElementById("eventMonthFilter");
+        if (yearSelect) eventYearFilter = yearSelect.value;
+        if (monthSelect) eventMonthFilter = monthSelect.value;
+
+        const filteredEvents = eventCatalog.filter(event => {
+          const parts = parseEventDateParts(event.dateText);
+          const matchesYear = eventYearFilter === "all" || String(parts.year) === eventYearFilter;
+          const matchesMonth = eventMonthFilter === "all" || String(parts.month) === eventMonthFilter;
+          return matchesYear && matchesMonth;
+        });
+        const list = document.getElementById("eventList");
+        if (!list) return;
+
+        if (!filteredEvents.length) {
+          list.innerHTML = `<div class="empty">這個年月目前沒有可顯示的活動。</div>`;
+          return;
+        }
+        list.innerHTML = renderEventCards(filteredEvents);
+      }
+
+      function renderEventCards(events) {
+        return events.map(event => `
           <article class="card">
             ${renderEventImage(event.imageUrl)}
             <div class="card-body">
-              <h2 class="event-title">${escapeHtml(event.title)}</h2>
+              <h2 class="event-title event-name">${escapeHtml(event.title)}</h2>
               <p class="meta">${escapeHtml(event.dateText)} ${escapeHtml(event.timeText)}</p>
               <p class="meta">${escapeHtml(event.location)}</p>
               ${renderEventStatus(event.status)}
-              <button class="primary full" type="button" onclick="goEvent('${escapeJs(event.eventId)}')">查看 / 報名</button>
+              <button class="primary full" type="button" onclick="goEvent('${escapeJs(event.eventId)}')">
+                ${event.status === "開放報名" ? "查看 / 報名" : "查看活動"}
+              </button>
             </div>
           </article>
         `).join("");
+      }
 
-        setView(cards);
+      function sortEventsForDisplay(events) {
+        return events.slice().sort((a, b) => {
+          const rankA = eventStatusRank(a.status);
+          const rankB = eventStatusRank(b.status);
+          if (rankA !== rankB) return rankA - rankB;
+
+          const timeA = eventDateTimestamp(a);
+          const timeB = eventDateTimestamp(b);
+          const validTimeA = Number.isFinite(timeA);
+          const validTimeB = Number.isFinite(timeB);
+          if (validTimeA !== validTimeB) return validTimeA ? -1 : 1;
+          if (timeA !== timeB) {
+            return rankA < 2 ? timeA - timeB : timeB - timeA;
+          }
+          return String(a.title || "").localeCompare(String(b.title || ""), "zh-Hant");
+        });
+      }
+
+      function eventStatusRank(status) {
+        if (status === "開放報名") return 0;
+        if (status === "尚未開放") return 1;
+        return 2;
+      }
+
+      function eventDateTimestamp(event) {
+        const parts = parseEventDateParts(event.dateText);
+        if (!parts.year || !parts.month || !parts.day) return Number.NaN;
+        const timeMatch = String(event.timeText || "").match(/(\d{1,2})\s*:\s*(\d{1,2})/);
+        const hour = timeMatch ? parseInt(timeMatch[1], 10) : 0;
+        const minute = timeMatch ? parseInt(timeMatch[2], 10) : 0;
+        return new Date(parts.year, parts.month - 1, parts.day, hour, minute).getTime();
+      }
+
+      function parseEventDateParts(dateText) {
+        const match = String(dateText || "").match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+        return match ? {
+          year: parseInt(match[1], 10),
+          month: parseInt(match[2], 10),
+          day: parseInt(match[3], 10)
+        } : { year: 0, month: 0, day: 0 };
       }
 
       async function renderEvent(eventId) {
@@ -476,7 +627,7 @@
           <article class="card">
             ${renderEventImage(event.imageUrl)}
             <div class="card-body">
-              <h2 class="event-title">${escapeHtml(event.title)}</h2>
+              <h2 class="event-title event-name">${escapeHtml(event.title)}</h2>
               <p class="meta">日期：${escapeHtml(event.dateText)} ${escapeHtml(event.timeText)}</p>
               <p class="meta">地點：${escapeHtml(event.location)}</p>
               ${event.address ? `<p class="meta">地址：${escapeHtml(event.address)}</p>` : ""}
@@ -953,6 +1104,7 @@
       function setTitle(title, showBack) {
         document.getElementById("pageTitle").textContent = title;
         document.getElementById("backBtn").hidden = !showBack;
+        document.getElementById("activityBrand").hidden = title !== "活動列表" && title !== "活動詳情";
       }
 
       function setView(html) {
