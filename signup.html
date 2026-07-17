@@ -127,11 +127,6 @@
         border-bottom: 1px solid var(--line);
       }
 
-      .event-refresh {
-        margin: -4px 0 10px;
-        text-align: right;
-      }
-
       .event-filter label {
         margin: 0 0 5px;
         color: var(--muted);
@@ -469,7 +464,7 @@
         setTitle("活動列表", false);
         const cached = readEventCache();
         if (cached) {
-          renderEventCatalog(cached.member, cached.events, true);
+          renderEventCatalog(cached.member, cached.events);
         } else {
           setView(`<div class="notice">載入活動中...</div>`);
         }
@@ -479,7 +474,6 @@
           result = await api("listEvents", { idToken });
         } catch (err) {
           if (cached) {
-            setEventRefreshMessage("暫時無法更新，已顯示最近一次的活動資料。");
             return;
           }
           throw err;
@@ -490,11 +484,16 @@
           return;
         }
 
-        writeEventCache(result.member, result.events || []);
-        renderEventCatalog(result.member, result.events || [], false);
+        const freshEvents = result.events || [];
+        writeEventCache(result.member, freshEvents);
+        currentMember = result.member;
+        if (cached && eventCatalogsMatch(cached.events, freshEvents)) {
+          return;
+        }
+        renderEventCatalog(result.member, freshEvents);
       }
 
-      function renderEventCatalog(member, events, showRefreshing) {
+      function renderEventCatalog(member, events) {
         currentMember = member;
         eventCatalog = sortEventsForDisplay(events || []);
         if (!eventCatalog.length) {
@@ -517,7 +516,6 @@
         `).join("");
 
         setView(`
-          ${showRefreshing ? `<div id="eventRefreshNotice" class="small event-refresh">正在更新最新活動...</div>` : ""}
           <div class="event-filters" aria-label="活動篩選">
             <div class="event-filter">
               <label for="eventYearFilter">年份</label>
@@ -539,9 +537,12 @@
         applyEventFilters();
       }
 
-      function setEventRefreshMessage(message) {
-        const notice = document.getElementById("eventRefreshNotice");
-        if (notice) notice.textContent = message;
+      function eventCatalogsMatch(cachedEvents, freshEvents) {
+        try {
+          return JSON.stringify(cachedEvents || []) === JSON.stringify(freshEvents || []);
+        } catch (err) {
+          return false;
+        }
       }
 
       function readEventCache() {
