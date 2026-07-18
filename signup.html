@@ -291,6 +291,22 @@
         color: var(--text);
       }
 
+      .attendance-status {
+        margin: 0 0 12px;
+        padding: 8px 12px;
+        border: 1px solid #d5e3de;
+        border-radius: 6px;
+        background: #f4faf7;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+        text-align: center;
+      }
+
+      .attendance-status strong {
+        color: var(--text);
+      }
+
       input.identity-count {
         text-align: center;
       }
@@ -767,7 +783,7 @@
 
       function eventDetailCacheKey(eventId) {
         if (!currentLineUserId || !eventId) return "";
-        return "club_event_detail_v2:" + APP_CONFIG.liffId + ":" + currentLineUserId + ":" + eventId;
+        return "club_event_detail_v3:" + APP_CONFIG.liffId + ":" + currentLineUserId + ":" + eventId;
       }
 
       function eventPageDataMatch(a, b) {
@@ -864,6 +880,7 @@
         const registration = result.registration;
         const registrationList = result.registrationList || [];
         const unregisteredMemberList = result.unregisteredMemberList || [];
+        const memberAttendance = result.memberAttendance || null;
         const peopleCount = registration && registration.status === "已報名" ? String(registration.peopleCount) : "";
         const note = registration && registration.status === "已報名" ? registration.note : "";
         const identityPlaceholder = currentMember && currentMember.name
@@ -877,6 +894,7 @@
               <label for="peopleCount">報名人數</label>
               <input id="peopleCount" class="identity-count" type="number" min="1" max="99" value="${escapeAttr(peopleCount)}" placeholder="${escapeAttr(identityPlaceholder)}">
               ${renderUnregisteredMemberList(unregisteredMemberList)}
+              ${renderMemberAttendance(memberAttendance)}
               <label for="note">備註</label>
               <textarea id="note" placeholder="例如：素食 1 位">${escapeHtml(note)}</textarea>
               <div class="actions">
@@ -1281,6 +1299,22 @@
         return `
           <div class="member-status">
             <strong>尚未報名社友：</strong>${escapeHtml(names || "目前沒有可顯示的社友")}
+          </div>
+        `;
+      }
+
+      function renderMemberAttendance(attendance) {
+        const registeredCount = Math.max(0, parseInt(attendance && attendance.registeredCount, 10) || 0);
+        const totalCount = Math.max(0, parseInt(attendance && attendance.totalCount, 10) || 0);
+        let rate = Number(attendance && attendance.rate);
+        if (!Number.isFinite(rate)) {
+          rate = totalCount > 0 ? Math.round((registeredCount / totalCount) * 1000) / 10 : 0;
+        }
+        const rateText = Number(rate.toFixed(1)).toString();
+
+        return `
+          <div class="attendance-status">
+            <strong>社員報名出席率：</strong>${registeredCount}/${totalCount}（${rateText}%）
           </div>
         `;
       }
