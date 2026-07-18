@@ -593,7 +593,7 @@
 
       function eventCacheKey() {
         if (!currentLineUserId) return "";
-        return "club_events_v2:" + APP_CONFIG.liffId + ":" + currentLineUserId;
+        return "club_events_v3:" + APP_CONFIG.liffId + ":" + currentLineUserId;
       }
 
       function applyEventFilters() {
@@ -767,7 +767,7 @@
 
       function eventDetailCacheKey(eventId) {
         if (!currentLineUserId || !eventId) return "";
-        return "club_event_detail_v1:" + APP_CONFIG.liffId + ":" + currentLineUserId + ":" + eventId;
+        return "club_event_detail_v2:" + APP_CONFIG.liffId + ":" + currentLineUserId + ":" + eventId;
       }
 
       function eventPageDataMatch(a, b) {
