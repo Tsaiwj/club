@@ -217,6 +217,19 @@
         margin-top: 14px;
       }
 
+      .registration-actions .registration-save {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+      }
+
+      .registration-actions .registration-cancel {
+        flex: 0 0 auto;
+        min-width: 86px;
+        padding: 0 12px;
+        white-space: nowrap;
+      }
+
       button {
         min-height: 42px;
         border: 0;
@@ -897,9 +910,9 @@
               ${renderMemberAttendance(memberAttendance)}
               <label for="note">備註</label>
               <textarea id="note" placeholder="例如：素食 1 位">${escapeHtml(note)}</textarea>
-              <div class="actions">
-                <button class="primary full" type="button" onclick="submitRegistration()">儲存報名</button>
-                ${registration && registration.status === "已報名" ? `<button class="danger" type="button" onclick="submitCancel()">取消報名</button>` : ""}
+              <div class="actions registration-actions">
+                <button class="primary registration-save" type="button" onclick="submitRegistration()">儲存報名</button>
+                ${registration && registration.status === "已報名" ? `<button class="danger registration-cancel" type="button" onclick="submitCancel()">取消報名</button>` : ""}
               </div>
             </div>
           </div>
