@@ -230,6 +230,13 @@
         white-space: nowrap;
       }
 
+      .registration-actions .registration-leave {
+        flex: 0 0 auto;
+        min-width: 62px;
+        padding: 0 12px;
+        white-space: nowrap;
+      }
+
       button {
         min-height: 42px;
         border: 0;
@@ -252,6 +259,11 @@
 
       .danger {
         background: var(--danger);
+        color: #fff;
+      }
+
+      .leave-button {
+        background: #d8891c;
         color: #fff;
       }
 
@@ -304,6 +316,21 @@
         color: var(--text);
       }
 
+      .leave-status {
+        margin: 12px 0 6px;
+        padding: 10px 12px;
+        border: 1px solid #f0c879;
+        border-radius: 6px;
+        background: #fff9ed;
+        color: #7c4a03;
+        font-size: 13px;
+        line-height: 1.7;
+      }
+
+      .leave-status strong {
+        color: #7c4a03;
+      }
+
       .attendance-status {
         margin: 0 0 12px;
         padding: 8px 12px;
@@ -350,7 +377,7 @@
       </header>
       <div id="activityBrand" class="activity-brand" hidden>
         <img
-          src="https://cdn.phototourl.com/free/2026-07-17-2b664617-4aea-4183-8244-c802d64bde7f.jpg"
+          src="https://cdn.phototourl.com/free/2026-07-19-51c6ca5c-ec86-4ae4-8546-db830f48c4b9.jpg"
           alt="Rotary"
           referrerpolicy="no-referrer"
         >
@@ -445,7 +472,7 @@
           currentMember = state.member;
           setView(`
             <div class="notice">
-              <strong>${escapeHtml(state.member.name)}</strong>，你已完成身分驗證。
+              <strong>${escapeHtml(state.member.name)}</strong>，您已完成身分驗證，歡迎加入「${escapeHtml(state.clubName || "本社團")}」官方帳號。
               <div class="small">驗證手機: ${escapeHtml(state.member.phone || "")}</div>
             </div>
             <button class="primary full" type="button" onclick="goEvents()">查看活動列表</button>
@@ -483,8 +510,7 @@
         currentMember = result.member;
         setView(`
           <div class="notice">
-            ${escapeHtml(result.message)}
-            <div class="small">驗證身分：${escapeHtml(result.member.name)}</div>
+            <strong>${escapeHtml(result.member.name)}</strong>，您已完成身分驗證，歡迎加入「${escapeHtml(result.clubName || "本社團")}」官方帳號。
             <div class="small">驗證手機: ${escapeHtml(result.member.phone || "")}</div>
           </div>
           <button class="primary full" type="button" onclick="goEvents()">查看活動列表</button>
@@ -796,7 +822,7 @@
 
       function eventDetailCacheKey(eventId) {
         if (!currentLineUserId || !eventId) return "";
-        return "club_event_detail_v3:" + APP_CONFIG.liffId + ":" + currentLineUserId + ":" + eventId;
+        return "club_event_detail_v4:" + APP_CONFIG.liffId + ":" + currentLineUserId + ":" + eventId;
       }
 
       function eventPageDataMatch(a, b) {
@@ -892,6 +918,7 @@
         const event = result.event;
         const registration = result.registration;
         const registrationList = result.registrationList || [];
+        const leaveList = result.leaveList || [];
         const unregisteredMemberList = result.unregisteredMemberList || [];
         const memberAttendance = result.memberAttendance || null;
         const peopleCount = registration && registration.status === "已報名" ? String(registration.peopleCount) : "";
@@ -906,12 +933,16 @@
               <h2 class="event-title">${registration && registration.status === "已報名" ? "修改報名" : "我要報名"}</h2>
               <label for="peopleCount">報名人數</label>
               <input id="peopleCount" class="identity-count" type="number" min="1" max="99" value="${escapeAttr(peopleCount)}" placeholder="${escapeAttr(identityPlaceholder)}">
+              ${renderLeaveList(leaveList)}
               ${renderUnregisteredMemberList(unregisteredMemberList)}
               ${renderMemberAttendance(memberAttendance)}
               <label for="note">備註</label>
               <textarea id="note" placeholder="例如：素食 1 位">${escapeHtml(note)}</textarea>
               <div class="actions registration-actions">
                 <button class="primary registration-save" type="button" onclick="submitRegistration()">儲存報名</button>
+                ${registration && registration.status === "請假"
+                  ? `<button class="danger registration-cancel" type="button" onclick="submitCancelLeave()">取消請假</button>`
+                  : `<button class="leave-button registration-leave" type="button" onclick="submitLeave()">請假</button>`}
                 ${registration && registration.status === "已報名" ? `<button class="danger registration-cancel" type="button" onclick="submitCancel()">取消報名</button>` : ""}
               </div>
             </div>
@@ -930,7 +961,8 @@
               ${renderRegistrationList(registrationList)}
             </div>
           `}
-          ${registration && registration.status === "已取消" ? `<div class="notice warning">你曾取消此活動報名，可重新送出報名。</div>` : ""}
+          ${registration && registration.status === "請假" ? `<div class="notice warning">您目前已登記請假，可取消請假或重新送出報名。</div>` : ""}
+          ${registration && registration.status === "已取消" ? `<div class="notice warning">您先前的報名或請假已取消，可重新選擇報名或請假。</div>` : ""}
           ${formHtml}
         `;
       }
@@ -958,6 +990,40 @@
         setView(`<div class="notice">取消中...</div>`);
 
         const result = await api("cancelRegistration", { idToken, eventId: currentEventId });
+        if (!result.ok) {
+          setView(`
+            <div class="notice error">${escapeHtml(result.message)}</div>
+            <button class="secondary full" type="button" onclick="renderEvent('${escapeJs(currentEventId)}')">返回活動</button>
+          `);
+          return;
+        }
+
+        clearEventDetailCache(currentEventId);
+        await renderEvent(currentEventId);
+      }
+
+      async function submitLeave() {
+        if (!confirm("確定要登記請假嗎？若原本已報名，報名狀態將改為請假。")) return;
+        setView(`<div class="notice">登記請假中...</div>`);
+
+        const result = await api("saveLeave", { idToken, eventId: currentEventId });
+        if (!result.ok) {
+          setView(`
+            <div class="notice error">${escapeHtml(result.message)}</div>
+            <button class="secondary full" type="button" onclick="renderEvent('${escapeJs(currentEventId)}')">返回活動</button>
+          `);
+          return;
+        }
+
+        clearEventDetailCache(currentEventId);
+        await renderEvent(currentEventId);
+      }
+
+      async function submitCancelLeave() {
+        if (!confirm("確定要取消請假嗎？")) return;
+        setView(`<div class="notice">取消請假中...</div>`);
+
+        const result = await api("cancelLeave", { idToken, eventId: currentEventId });
         if (!result.ok) {
           setView(`
             <div class="notice error">${escapeHtml(result.message)}</div>
@@ -1299,7 +1365,7 @@
         if (!members || !members.length) {
           return `
             <div class="member-status">
-              <strong>尚未報名社友：</strong>目前已綁定社友皆已報名。
+              <strong>尚未報名社友：</strong>目前沒有尚未回覆的已綁定社友。
             </div>
           `;
         }
@@ -1312,6 +1378,19 @@
         return `
           <div class="member-status">
             <strong>尚未報名社友：</strong>${escapeHtml(names || "目前沒有可顯示的社友")}
+          </div>
+        `;
+      }
+
+      function renderLeaveList(members) {
+        const names = (members || [])
+          .map(member => member.name)
+          .filter(Boolean)
+          .join("、");
+
+        return `
+          <div class="leave-status">
+            <strong>請假社友/寶眷：</strong>${escapeHtml(names || "目前無人請假")}
           </div>
         `;
       }
