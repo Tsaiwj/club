@@ -377,7 +377,7 @@
       </header>
       <div id="activityBrand" class="activity-brand" hidden>
         <img
-          src="https://cdn.phototourl.com/free/2026-07-19-51c6ca5c-ec86-4ae4-8546-db830f48c4b9.jpg"
+          src="https://cdn.phototourl.com/free/2026-07-17-2b664617-4aea-4183-8244-c802d64bde7f.jpg"
           alt="Rotary"
           referrerpolicy="no-referrer"
         >
@@ -926,6 +926,11 @@
         const identityPlaceholder = currentMember && currentMember.name
           ? `以${currentMember.name}的身分留言`
           : "";
+        const participationSummaryHtml = `
+          ${renderLeaveList(leaveList)}
+          ${renderUnregisteredMemberList(unregisteredMemberList)}
+          ${renderMemberAttendance(memberAttendance)}
+        `;
 
         const formHtml = result.canRegister ? `
           <div class="card">
@@ -933,9 +938,7 @@
               <h2 class="event-title">${registration && registration.status === "已報名" ? "修改報名" : "我要報名"}</h2>
               <label for="peopleCount">報名人數</label>
               <input id="peopleCount" class="identity-count" type="number" min="1" max="99" value="${escapeAttr(peopleCount)}" placeholder="${escapeAttr(identityPlaceholder)}">
-              ${renderLeaveList(leaveList)}
-              ${renderUnregisteredMemberList(unregisteredMemberList)}
-              ${renderMemberAttendance(memberAttendance)}
+              ${participationSummaryHtml}
               <label for="note">備註</label>
               <textarea id="note" placeholder="例如：素食 1 位">${escapeHtml(note)}</textarea>
               <div class="actions registration-actions">
@@ -947,7 +950,14 @@
               </div>
             </div>
           </div>
-        ` : `<div class="notice warning">${escapeHtml(result.registerMessage)}</div>`;
+        ` : `
+          <div class="card">
+            <div class="card-body">
+              ${participationSummaryHtml}
+            </div>
+          </div>
+          <div class="notice warning">${escapeHtml(result.registerMessage)}</div>
+        `;
 
         return `
           ${registration && registration.status === "已報名" ? `
@@ -961,8 +971,12 @@
               ${renderRegistrationList(registrationList)}
             </div>
           `}
-          ${registration && registration.status === "請假" ? `<div class="notice warning">您目前已登記請假，可取消請假或重新送出報名。</div>` : ""}
-          ${registration && registration.status === "已取消" ? `<div class="notice warning">您先前的報名或請假已取消，可重新選擇報名或請假。</div>` : ""}
+          ${registration && registration.status === "請假"
+            ? `<div class="notice warning">${result.canRegister ? "您目前已登記請假，可取消請假或重新送出報名。" : "您已登記請假。"}</div>`
+            : ""}
+          ${registration && registration.status === "已取消"
+            ? `<div class="notice warning">${result.canRegister ? "您先前的報名或請假已取消，可重新選擇報名或請假。" : "您先前的報名或請假已取消。"}</div>`
+            : ""}
           ${formHtml}
         `;
       }
