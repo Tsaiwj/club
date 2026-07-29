@@ -1379,7 +1379,7 @@
         if (!members || !members.length) {
           return `
             <div class="member-status">
-              <strong>尚未報名社友：</strong>目前沒有尚未回覆的已綁定社友。
+              <strong>尚未報名社友/執秘：</strong>目前沒有尚未回覆的已綁定社友或執秘。
             </div>
           `;
         }
@@ -1391,7 +1391,7 @@
 
         return `
           <div class="member-status">
-            <strong>尚未報名社友：</strong>${escapeHtml(names || "目前沒有可顯示的社友")}
+            <strong>尚未報名社友/執秘：</strong>${escapeHtml(names || "目前沒有可顯示的社友或執秘")}
           </div>
         `;
       }
@@ -1404,7 +1404,7 @@
 
         return `
           <div class="leave-status">
-            <strong>請假社友/寶眷：</strong>${escapeHtml(names || "目前無人請假")}
+            <strong>請假社友/寶眷/執秘：</strong>${escapeHtml(names || "目前無人請假")}
           </div>
         `;
       }
