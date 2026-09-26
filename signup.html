@@ -302,6 +302,11 @@ SOFTWARE.
         white-space: nowrap;
       }
 
+      .registration-actions button:disabled {
+        opacity: .55;
+        cursor: not-allowed;
+      }
+
       button {
         min-height: 42px;
         border: 0;
@@ -524,6 +529,12 @@ SOFTWARE.
       };
       const EVENT_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
       const EVENT_DETAIL_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
+      const participationStates = {};
+      const clubPerformance = { version: "1.13.0", liffInitMs: null, requests: [] };
+
+      function getClubPerformanceDiagnostics() {
+        return JSON.parse(JSON.stringify(clubPerformance));
+      }
       const initialEventPeriod = getTaipeiYearMonth();
 
       let idToken = "";
@@ -552,7 +563,9 @@ SOFTWARE.
           }
 
           setView(`<div class="notice">正在連結Google資料庫，安全驗證中，請稍後...</div>`);
-          await liff.init({ liffId: APP_CONFIG.liffId });
+          const lineStartedAt = Date.now();
+          try { await liff.init({ liffId: APP_CONFIG.liffId }); }
+          finally { clubPerformance.liffInitMs = Date.now() - lineStartedAt; }
 
           if (!liff.isLoggedIn()) {
             setView(`<div class="notice">正在前往 LINE 登入...</div>`);
@@ -1179,6 +1192,7 @@ SOFTWARE.
           ${renderEventArticle(result.event)}
           <div id="eventDynamicContent">${buildEventDynamicHtml(result)}</div>
         `);
+        restoreParticipationUi();
       }
 
       function renderEventDynamicContent(result) {
@@ -1186,6 +1200,7 @@ SOFTWARE.
         const target = document.getElementById("eventDynamicContent");
         if (target) {
           target.innerHTML = buildEventDynamicHtml(result);
+          restoreParticipationUi();
           return;
         }
         renderEventPage(result);
@@ -1242,6 +1257,7 @@ SOFTWARE.
         `;
 
         return `
+          <div id="participationStatus" class="notice" role="status" aria-live="polite" hidden></div>
           ${registration && registration.status === "已報名" ? `
             <div class="notice">
               你已報名此活動，目前總報名人數 ${result.registeredCount} 人。
@@ -1289,88 +1305,144 @@ SOFTWARE.
       }
 
       async function submitRegistration() {
+        if (participationBlocked()) return;
         if (!validateRegistrationPeopleCount(true)) return;
         const count = document.getElementById("peopleCount").value.trim();
         const note = document.getElementById("note").value;
-        invalidateEventDetailRequest(currentEventId);
-        setView(`<div class="notice">儲存中...</div>`);
-
-        const result = await api("saveRegistration", { idToken, eventId: currentEventId, peopleCount: count, note });
-        if (!result.ok) {
-          setView(`
-            <div class="notice error">${escapeHtml(result.message)}</div>
-            <button class="secondary full" type="button" onclick="renderEvent('${escapeJs(currentEventId)}')">返回活動</button>
-          `);
-          return;
-        }
-
-        await showRegistrationResult(result);
+        await submitParticipation("saveRegistration", { peopleCount: count, note }, "儲存中...");
       }
 
       async function submitCancel() {
+        if (participationBlocked()) return;
         if (!confirm("確定要取消報名嗎？")) return;
-        invalidateEventDetailRequest(currentEventId);
-        setView(`<div class="notice">取消中...</div>`);
-
-        const result = await api("cancelRegistration", { idToken, eventId: currentEventId });
-        if (!result.ok) {
-          setView(`
-            <div class="notice error">${escapeHtml(result.message)}</div>
-            <button class="secondary full" type="button" onclick="renderEvent('${escapeJs(currentEventId)}')">返回活動</button>
-          `);
-          return;
-        }
-
-        await showRegistrationResult(result);
+        await submitParticipation("cancelRegistration", {}, "取消中...");
       }
 
       async function submitLeave() {
+        if (participationBlocked()) return;
         if (!confirm("確定要登記請假嗎？若原本已報名，報名狀態將改為請假。")) return;
-        invalidateEventDetailRequest(currentEventId);
-        setView(`<div class="notice">登記請假中...</div>`);
-
-        const result = await api("saveLeave", { idToken, eventId: currentEventId });
-        if (!result.ok) {
-          setView(`
-            <div class="notice error">${escapeHtml(result.message)}</div>
-            <button class="secondary full" type="button" onclick="renderEvent('${escapeJs(currentEventId)}')">返回活動</button>
-          `);
-          return;
-        }
-
-        await showRegistrationResult(result);
+        await submitParticipation("saveLeave", {}, "登記請假中...");
       }
 
       async function submitCancelLeave() {
+        if (participationBlocked()) return;
         if (!confirm("確定要取消請假嗎？")) return;
-        invalidateEventDetailRequest(currentEventId);
-        setView(`<div class="notice">取消請假中...</div>`);
-
-        const result = await api("cancelLeave", { idToken, eventId: currentEventId });
-        if (!result.ok) {
-          setView(`
-            <div class="notice error">${escapeHtml(result.message)}</div>
-            <button class="secondary full" type="button" onclick="renderEvent('${escapeJs(currentEventId)}')">返回活動</button>
-          `);
-          return;
-        }
-
-        await showRegistrationResult(result);
+        await submitParticipation("cancelLeave", {}, "取消請假中...");
       }
 
-      async function showRegistrationResult(result) {
-        invalidateEventDetailRequest(currentEventId);
-        clearEventDetailCache(currentEventId);
+      function participationBlocked() {
+        const state = participationStates[currentEventId];
+        return !!(state && (state.busy || state.uncertain));
+      }
+
+      function restoreParticipationUi() {
+        const state = participationStates[currentEventId];
+        const status = document.getElementById("participationStatus");
+        if (document.querySelectorAll) {
+          document.querySelectorAll(".registration-actions button, #peopleCount, #note").forEach(control => {
+            control.disabled = participationBlocked();
+          });
+        }
+        if (!state || !status) return;
+        if (state.draft) {
+          const count = document.getElementById("peopleCount");
+          const note = document.getElementById("note");
+          if (count) count.value = state.draft.peopleCount;
+          if (note) note.value = state.draft.note;
+        }
+        status.hidden = false;
+        status.className = "notice" + (state.uncertain || state.error ? " warning" : "");
+        status.innerHTML = `<div>${escapeHtml(state.message)}</div>${state.uncertain ? `
+          <button class="secondary" type="button" onclick="recoverParticipation()" ${state.busy ? "disabled" : ""}>${state.busy ? "確認中..." : "確認最新狀態"}</button>` : ""}`;
+      }
+
+      async function submitParticipation(action, values, message) {
+        if (participationBlocked()) return;
+        const eventId = String(currentEventId);
+        const count = document.getElementById("peopleCount");
+        const note = document.getElementById("note");
+        const state = participationStates[eventId] = {
+          busy: true, uncertain: false, message,
+          draft: { peopleCount: count ? count.value : "", note: note ? note.value : "" }
+        };
+        invalidateEventDetailRequest(eventId);
+        clearEventDetailCache(eventId);
+        restoreParticipationUi();
+        let confirmed = false;
+        try {
+          const result = await api(action, { idToken, eventId, ...values });
+          if (!result.ok) {
+            // Server-side failures can follow a write; only explicit business rejections are definitive.
+            if (result.uncertain) throw new Error(result.message || "結果尚未確認");
+            state.error = true;
+            state.message = result.message || "無法完成操作，請確認資料。";
+            if (result.code === "NOT_BOUND") {
+              delete participationStates[eventId];
+              if (currentPage === "event" && String(currentEventId) === eventId) renderNeedVerifyOrError(result);
+            }
+            return;
+          }
+          confirmed = true;
+          delete participationStates[eventId];
+          await showRegistrationResult(result, eventId);
+        } catch (error) {
+          participationStates[eventId] = state;
+          state.uncertain = true;
+          state.message = confirmed
+            ? "操作已儲存，但畫面更新失敗。請確認最新狀態，不要重複送出。"
+            : "尚未確認本次操作結果。伺服器可能已儲存或仍在處理，請先確認最新狀態，不要重複送出。";
+        } finally {
+          state.busy = false;
+          if (currentPage === "event" && String(currentEventId) === eventId) restoreParticipationUi();
+        }
+      }
+
+      async function recoverParticipation() {
+        const eventId = String(currentEventId);
+        const state = participationStates[eventId];
+        if (!state || state.busy || !state.uncertain) return;
+        state.busy = true;
+        restoreParticipationUi();
+        invalidateEventDetailRequest(eventId);
+        try {
+          // Bypass browser/in-flight/shared registration snapshots; this never resubmits a mutation.
+          const result = await api("getEventPageData", { idToken, eventId, fresh: true });
+          if (!result.ok) {
+            if (result.code === "NOT_BOUND") {
+              delete participationStates[eventId];
+              if (currentPage === "event" && String(currentEventId) === eventId) renderNeedVerifyOrError(result);
+              return;
+            }
+            throw new Error(result.message || "確認失敗");
+          }
+          participationStates[eventId] = {
+            message: "已取得目前紀錄。上次逾時的請求仍可能較晚完成，請確認報名／請假狀態後再操作。"
+          };
+          await showRegistrationResult({ pageData: result }, eventId);
+        } catch (error) {
+          participationStates[eventId] = state;
+          state.message = "目前仍無法確認結果，原輸入已保留。請稍後再次確認最新狀態。";
+        } finally {
+          state.busy = false;
+          if (currentPage === "event" && String(currentEventId) === eventId) restoreParticipationUi();
+        }
+      }
+
+      async function showRegistrationResult(result, eventId = currentEventId) {
+        invalidateEventDetailRequest(eventId);
+        clearEventDetailCache(eventId);
         const pageData = result.pageData;
         if (pageData && pageData.ok && pageData.event &&
-            String(pageData.event.eventId) === String(currentEventId)) {
-          currentMember = pageData.member;
-          writeEventDetailCache(currentEventId, pageData);
-          renderEventPage(pageData);
+            String(pageData.event.eventId) === String(eventId)) {
+          writeEventDetailCache(eventId, pageData);
+          if (currentPage === "event" && String(currentEventId) === String(eventId)) {
+            currentMember = pageData.member;
+            renderEventPage(pageData);
+          }
           return;
         }
         // Keep working when the site is updated before the customer's Library.
-        await renderEvent(currentEventId);
+        if (currentPage === "event" && String(currentEventId) === String(eventId)) await renderEvent(eventId);
       }
 
       function renderClubShare() {
@@ -1961,6 +2033,8 @@ SOFTWARE.
 
       function api(action, payload) {
         return new Promise((resolve, reject) => {
+          const startedAt = Date.now();
+          let settled = false;
           const callbackName = "__clubApiCallback_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
           const params = new URLSearchParams({
             action,
@@ -1970,27 +2044,42 @@ SOFTWARE.
 
           const script = document.createElement("script");
           const timer = setTimeout(() => {
-            cleanup();
-            reject(new Error("API 沒有回應，請確認 Apps Script Web App URL 與部署權限。"));
-          }, 20000);
+            finish(new Error("API 回應逾時，請稍後確認最新狀態。"));
+          }, ["saveRegistration", "saveLeave", "cancelRegistration", "cancelLeave"].includes(action) || payload && payload.fresh ? 45000 : 20000);
 
           window[callbackName] = data => {
-            cleanup();
-            resolve(data);
+            if (!data || typeof data.ok !== "boolean") { finish(new Error("API 回應格式不正確。")); return; }
+            finish(null, data);
           };
 
           script.onerror = () => {
-            cleanup();
-            reject(new Error("API 載入失敗，請確認 Apps Script Web App URL 是否正確。"));
+            finish(new Error("API 載入失敗，請確認網路與部署權限。"));
           };
+          script.onload = () => { if (!settled) finish(new Error("API 未回傳有效資料。")); };
+          script.referrerPolicy = "no-referrer";
 
           script.src = APP_CONFIG.apiUrl + (APP_CONFIG.apiUrl.indexOf("?") === -1 ? "?" : "&") + params.toString();
           document.body.appendChild(script);
 
-          function cleanup() {
+          function finish(error, data) {
+            if (settled) return;
+            settled = true;
             clearTimeout(timer);
-            delete window[callbackName];
+            script.onload = script.onerror = null;
+            if (error) {
+              window[callbackName] = () => {};
+              setTimeout(() => { delete window[callbackName]; }, 600000);
+            } else delete window[callbackName];
             if (script.parentNode) script.parentNode.removeChild(script);
+            const server = data && data._performance;
+            const timing = { action, totalMs: Date.now() - startedAt, outcome: error ? "transport-error" : data.ok ? "ok" : "rejected" };
+            if (server) {
+              timing.server = server;
+              delete data._performance;
+            }
+            clubPerformance.requests.push(timing);
+            if (clubPerformance.requests.length > 20) clubPerformance.requests.shift();
+            if (error) reject(error); else resolve(data);
           }
         });
       }
