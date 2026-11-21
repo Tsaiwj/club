@@ -157,7 +157,7 @@ SOFTWARE.
 
       .event-filters {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
         gap: 10px;
         margin-bottom: 14px;
         padding-bottom: 14px;
@@ -448,60 +448,15 @@ SOFTWARE.
         color: var(--muted);
       }
 
-      .share-preview { padding-bottom: 150px; letter-spacing: 0; }
-      .share-preview [hidden] { display: none !important; }
-      .share-heading, .share-navigation { display: flex; align-items: center; gap: 8px; }
-      .share-heading { justify-content: space-between; margin-bottom: 12px; }
-      .share-heading h2 { margin: 0; font-size: 16px; }
+      .share-direct { max-width: 480px; margin: 32px auto; letter-spacing: 0; }
+      .share-direct [hidden] { display: none !important; }
+      .share-direct .actions { flex-direction: column; }
+      .share-direct button { display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+      .share-direct button:disabled { opacity: .55; cursor: default; }
+      .share-direct button:focus-visible { outline: 3px solid #69a9dc; outline-offset: 3px; }
       .share-icon { width: 19px; height: 19px; flex: none; }
-      .share-icon-button {
-        display: inline-flex; align-items: center; justify-content: center;
-        width: 36px; height: 36px; padding: 0; flex: none;
-        border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--text);
-      }
-      .share-icon-button:disabled { opacity: .4; }
-      .share-preview button { cursor: pointer; touch-action: manipulation; }
-      .share-preview button:disabled { cursor: default; }
-      .share-preview button:focus-visible, .share-track:focus-visible { outline: 3px solid #69a9dc; outline-offset: 3px; }
-      .share-counter { width: 48px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
-      #shareNavigation { display: inline-flex; align-items: center; gap: 4px; }
-      .share-track {
-        display: flex; align-items: stretch; gap: 16px; overflow-x: auto;
-        scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
-        scrollbar-width: thin; padding: 4px 2px 16px;
-      }
-      .share-track.single { justify-content: center; }
-      .share-card {
-        flex: 0 0 310px; width: 310px; min-width: 0; max-width: calc(100vw - 52px);
-        display: flex; flex-direction: column; overflow: hidden; scroll-snap-align: start;
-        border: 1px solid var(--line); border-radius: 8px; background: #fff;
-      }
-      .share-card > * { flex-shrink: 0; }
-      .share-card > .share-card-body { flex-grow: 1; }
-      .share-card-section { padding: 20px; }
-      .share-flex-box { display: flex; min-width: 0; }
-      .share-flex-text { margin: 0; min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; line-height: 1.5; }
-      .share-flex-button {
-        display: flex; align-items: center; justify-content: center; min-height: 40px;
-        padding: 8px 12px; border-radius: 4px; font-size: 14px; text-align: center; overflow-wrap: anywhere;
-      }
-      .share-image { width: 100%; overflow: hidden; background: #edf1ef; }
-      .share-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
-      .share-image-error { display: flex; align-items: center; justify-content: center; height: 100%; padding: 16px; color: var(--muted); font-size: 13px; }
-      .share-image-warning { font-size: 13px; color: var(--warning); }
-      .share-summary { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 14px; }
-      .share-summary h3 { margin: 0 0 6px; color: var(--muted); font-size: 13px; font-weight: 500; }
-      .share-summary p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-      .share-actions {
-        position: fixed; z-index: 11; bottom: 0; left: 50%; transform: translateX(-50%);
-        width: min(100%, 720px); padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-        background: #fff; border-top: 1px solid var(--line);
-      }
-      .share-status { margin: 0 0 8px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
-      .share-action-buttons { display: flex; gap: 10px; }
-      .share-action-buttons .primary { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
       .share-error { color: var(--danger); white-space: pre-wrap; overflow-wrap: anywhere; }
-      @media (max-width: 380px) { .share-heading { flex-wrap: wrap; } }
+
     </style>
   </head>
   <body>
@@ -512,8 +467,8 @@ SOFTWARE.
       </header>
       <div id="activityBrand" class="activity-brand" hidden>
         <img
-          src="https://cdn.phototourl.com/free/2026-07-17-2b664617-4aea-4183-8244-c802d64bde7f.jpg"
-          alt="Rotary"
+          src="https://godteammate.com.tw/uploads/river/西南logo_英文_300_x_100_像素_.jpg"
+          alt="西南扶輪社"
           referrerpolicy="no-referrer"
         >
       </div>
@@ -527,10 +482,10 @@ SOFTWARE.
         liffId: "2010545073-ZLJqZtJk",
         apiUrl: "https://script.google.com/macros/s/AKfycbzma_RNpwXmC9m3JoRHYtUMzP808fF8F-9i34hPpgrXSizZQrXA1hc0oMzQ0hYtGXy_ow/exec"
       };
-      const EVENT_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+      const EVENT_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
       const EVENT_DETAIL_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
       const participationStates = {};
-      const clubPerformance = { version: "1.13.0", liffInitMs: null, requests: [] };
+      const clubPerformance = { version: "1.14.0", liffInitMs: null, requests: [] };
 
       function getClubPerformanceDiagnostics() {
         return JSON.parse(JSON.stringify(clubPerformance));
@@ -544,16 +499,26 @@ SOFTWARE.
       let currentDirectoryMemberKey = new URLSearchParams(location.search).get("memberKey") || "";
       let currentMember = null;
       let verificationSubmitting = false;
-      let sharePreviewState = null;
+      let directShareState = null;
       let eventCatalog = [];
       let eventYearFilter = String(initialEventPeriod.year);
-      let eventMonthFilter = String(initialEventPeriod.month);
+      let eventMonthFilter = "all";
+      let eventTypeFilter = "all";
       const eventDetailRequests = {};
       const eventDetailVersions = {};
       let eventListVersion = 0;
       let eventPrefetchTimer = null;
+      let readyEventPrefetch = null;
 
       document.addEventListener("DOMContentLoaded", init);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) maybeOpenSharePicker(); });
+      if (typeof window !== "undefined") window.addEventListener("pagehide", () => {
+        // Returning from history must not reopen a cancelled picker automatically.
+        if (directShareState) {
+          directShareState.autoPending = false;
+          updateDirectShareUi(directShareState);
+        }
+      });
 
       async function init() {
         try {
@@ -681,6 +646,7 @@ SOFTWARE.
       async function renderEvents() {
         setTitle("活動列表", false);
         cancelEventPrefetch();
+        readyEventPrefetch = null;
         const version = ++eventListVersion;
         const cached = readEventCache();
         if (cached) {
@@ -757,6 +723,14 @@ SOFTWARE.
               <select id="eventMonthFilter" onchange="applyEventFilters()">
                 <option value="all" ${eventMonthFilter === "all" ? "selected" : ""}>全部月份</option>
                 ${monthOptions}
+              </select>
+            </div>
+            <div class="event-filter">
+              <label for="eventTypeFilter">活動性質</label>
+              <select id="eventTypeFilter" onchange="applyEventFilters()">
+                <option value="all">全部性質</option>
+                ${["一般活動", "理監事會議", "地區活動"].map(type =>
+                  `<option ${type === eventTypeFilter ? "selected" : ""}>${type}</option>`).join("")}
               </select>
             </div>
           </div>
@@ -865,6 +839,7 @@ SOFTWARE.
 
       function clearAllEventCaches() {
         cancelEventPrefetch();
+        readyEventPrefetch = null;
         ++eventListVersion;
         Object.keys(eventDetailRequests).forEach(invalidateEventDetailRequest);
         currentMember = null;
@@ -900,20 +875,17 @@ SOFTWARE.
       function applyEventFilters() {
         const yearSelect = document.getElementById("eventYearFilter");
         const monthSelect = document.getElementById("eventMonthFilter");
+        const typeSelect = document.getElementById("eventTypeFilter");
+        if (typeSelect) eventTypeFilter = typeSelect.value;
         if (yearSelect) eventYearFilter = yearSelect.value;
         if (monthSelect) eventMonthFilter = monthSelect.value;
 
-        const filteredEvents = eventCatalog.filter(event => {
-          const parts = parseEventDateParts(event.dateText);
-          const matchesYear = eventYearFilter === "all" || String(parts.year) === eventYearFilter;
-          const matchesMonth = eventMonthFilter === "all" || String(parts.month) === eventMonthFilter;
-          return matchesYear && matchesMonth;
-        });
+        const filteredEvents = eventCatalog.filter(matchesEventFilters);
         const list = document.getElementById("eventList");
         if (!list) return;
 
         if (!filteredEvents.length) {
-          list.innerHTML = `<div class="empty">這個年月目前沒有可顯示的活動。</div>`;
+          list.innerHTML = `<div class="empty">目前沒有符合篩選條件的活動。</div>`;
           return;
         }
         list.innerHTML = renderEventCards(filteredEvents);
@@ -997,21 +969,30 @@ SOFTWARE.
         };
       }
 
+      function matchesEventFilters(event) {
+        const parts = parseEventDateParts(event.dateText);
+        return (eventYearFilter === "all" || String(parts.year) === eventYearFilter) &&
+          (eventMonthFilter === "all" || String(parts.month) === eventMonthFilter) &&
+          (eventTypeFilter === "all" || eventTypeFilter === normalizedEventType(event.eventType));
+      }
+
       function scheduleEventDetailPrefetch(events) {
         cancelEventPrefetch();
-        const candidates = sortEventsForDisplay(events || []).filter(event => {
-          const parts = parseEventDateParts(event.dateText);
-          const matchesYear = eventYearFilter === "all" || String(parts.year) === eventYearFilter;
-          const matchesMonth = eventMonthFilter === "all" || String(parts.month) === eventMonthFilter;
-          return matchesYear && matchesMonth;
-        }).slice(0, 1);
+        const candidates = sortEventsForDisplay(events || []).filter(matchesEventFilters).slice(0, 1);
 
         candidates.forEach(event => {
           if (readEventDetailCache(event.eventId)) return;
           eventPrefetchTimer = setTimeout(() => {
             eventPrefetchTimer = null;
-            if (currentPage !== "events" || readEventDetailCache(event.eventId)) return;
-            requestEventPageData(event.eventId).catch(() => {});
+            if (currentPage !== "events" || !matchesEventFilters(event) || readEventDetailCache(event.eventId)) return;
+            const scope = eventCacheScope();
+            const version = eventDetailVersions[event.eventId] || 0;
+            requestEventPageData(event.eventId).then(result => {
+              if (result.ok && scope && scope === eventCacheScope() && currentPage === "events" &&
+                  version === (eventDetailVersions[event.eventId] || 0)) {
+                readyEventPrefetch = { id: event.eventId, scope, at: Date.now(), data: result };
+              }
+            }).catch(() => {});
           }, 600);
         });
       }
@@ -1024,10 +1005,11 @@ SOFTWARE.
       function requestEventPageData(eventId) {
         const key = String(eventId || "");
         if (eventDetailRequests[key]) return eventDetailRequests[key];
+        const scope = eventCacheScope();
         const version = eventDetailVersions[key] || 0;
         const request = api("getEventPageData", { idToken, eventId: key }).then(result => {
           if (eventDetailRequests[key] === request) delete eventDetailRequests[key];
-          if (result && result.ok && version === (eventDetailVersions[key] || 0)) {
+          if (result && result.ok && scope === eventCacheScope() && version === (eventDetailVersions[key] || 0)) {
             writeEventDetailCache(key, result);
           }
           return result;
@@ -1041,6 +1023,7 @@ SOFTWARE.
 
       function invalidateEventDetailRequest(eventId) {
         const key = String(eventId || "");
+        if (readyEventPrefetch && readyEventPrefetch.id === key) readyEventPrefetch = null;
         eventDetailVersions[key] = (eventDetailVersions[key] || 0) + 1;
         delete eventDetailRequests[key];
       }
@@ -1105,6 +1088,14 @@ SOFTWARE.
         cancelEventPrefetch();
         currentEventId = eventId;
         const version = eventDetailVersions[eventId] || 0;
+        const ready = readyEventPrefetch;
+        readyEventPrefetch = null;
+        if (ready && ready.id === eventId && ready.scope === eventCacheScope() &&
+            Date.now() >= ready.at && Date.now() - ready.at < 15000) {
+          currentMember = ready.data.member;
+          renderEventPage(ready.data);
+          return;
+        }
         const cached = readEventDetailCache(eventId);
         const previewEvent = eventCatalog.find(event => String(event.eventId) === String(eventId)) ||
           readEventPreview(eventId);
@@ -1446,25 +1437,25 @@ SOFTWARE.
       }
 
       function renderClubShare() {
-        return loadSharePreview("社務轉分享", "getClubShareMessages", {});
+        return loadDirectShare("社務轉分享", "getClubShareMessages", {});
       }
 
       function renderPersonalShare() {
-        return loadSharePreview("個人資料轉分享", "getPersonalShareMessages", { idToken });
+        return loadDirectShare("個人資料轉分享", "getPersonalShareMessages", { idToken });
       }
 
       function renderDirectoryProfileShare() {
-        return loadSharePreview("社友資料轉分享", "getDirectoryProfileShareMessages", {
+        return loadDirectShare("社友資料轉分享", "getDirectoryProfileShareMessages", {
           idToken, memberKey: currentDirectoryMemberKey
         });
       }
 
       function renderExecutiveSecretaryShare() {
-        return loadSharePreview("執行秘書資料轉分享", "getExecutiveSecretaryShareMessages", { idToken });
+        return loadDirectShare("執行秘書資料轉分享", "getExecutiveSecretaryShareMessages", { idToken });
       }
 
       // Bundled Lucide icons; licenses are included at the top of this document.
-      function sharePreviewIcon(name) {
+      function shareIcon(name) {
         const paths = {
           share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>',
           refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
@@ -1474,64 +1465,35 @@ SOFTWARE.
         return '<svg class="share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[name] + '</svg>';
       }
 
-      async function loadSharePreview(title, action, payload) {
-        if (sharePreviewState && sharePreviewState.sharing) return;
+      async function loadDirectShare(title, action, payload, autoOpen = true) {
+        if (directShareState && directShareState.sharing) return;
         const state = { title, action, payload, messages: [], loading: true, sharing: false,
-          success: false, blocked: false, error: "", status: "正在讀取分享內容...", observer: null };
+          autoPending: autoOpen, attempted: false, success: false, blocked: false,
+          error: "", status: "正在讀取名片..." };
         setTitle(title, false);
         setView(`
-          <section id="sharePreview" class="share-preview">
-            <div class="share-heading">
-              <h2>卡片預覽</h2>
-              <div class="share-navigation">
-                <span id="shareNavigation" hidden>
-                  <button class="share-icon-button" id="sharePrevious" type="button" title="上一張卡片" aria-label="上一張卡片">${sharePreviewIcon("left")}</button>
-                  <span class="share-counter" id="shareCounter">1 / 1</span>
-                  <button class="share-icon-button" id="shareNext" type="button" title="下一張卡片" aria-label="下一張卡片">${sharePreviewIcon("right")}</button>
-                </span>
-                <button class="share-icon-button" id="shareReload" type="button" title="重新讀取卡片" aria-label="重新讀取卡片">${sharePreviewIcon("refresh")}</button>
-              </div>
+          <section id="directShare" class="share-direct" aria-label="${escapeAttr(title)}">
+            <p id="shareStatus" class="notice" role="status" aria-live="polite"></p>
+            <p id="shareError" class="share-error" role="alert" hidden></p>
+            <div class="actions">
+              <button id="shareSend" class="primary" type="button" hidden>${shareIcon("share")}<span id="shareLabel">開啟 LINE 通訊錄</span></button>
+              <button id="shareReload" class="secondary" type="button" hidden>${shareIcon("refresh")}重新讀取名片</button>
+              <button id="shareDone" class="secondary" type="button" hidden>完成</button>
             </div>
-            <div id="shareEmpty" class="empty" role="status">正在讀取分享內容...</div>
-            <div id="shareError" class="share-error" role="alert" hidden></div>
-            <button id="shareRetry" class="secondary" type="button" hidden>重新讀取</button>
-            <div id="shareTrack" class="share-track" role="region" aria-label="分享卡片預覽" tabindex="0" hidden></div>
-            <p id="shareImageWarning" class="share-image-warning" hidden>部分圖片無法載入，請確認圖片網址與公開權限。</p>
-            <section id="shareSummary" class="share-summary" hidden>
-              <h3>分享摘要</h3><p id="shareSummaryText"></p>
-            </section>
-            <footer class="share-actions">
-              <p id="shareStatus" class="share-status" role="status" aria-live="polite"></p>
-              <div class="share-action-buttons">
-                <button id="shareDone" class="secondary" type="button" hidden>完成</button>
-                <button id="shareSend" class="primary" type="button" disabled>${sharePreviewIcon("share")}<span id="shareLabel">選擇好友並分享</span></button>
-              </div>
-            </footer>
           </section>
         `);
-        sharePreviewState = state;
-        document.getElementById("shareReload").onclick = reloadSharePreview;
-        document.getElementById("shareRetry").onclick = reloadSharePreview;
-        document.getElementById("shareSend").onclick = sharePreviewCards;
+        directShareState = state;
+        document.getElementById("shareReload").onclick = reloadDirectShare;
+        document.getElementById("shareSend").onclick = shareDirectMessages;
         document.getElementById("shareDone").onclick = closeLiffWindow;
-        document.getElementById("sharePrevious").onclick = () => moveSharePreview(-1);
-        document.getElementById("shareNext").onclick = () => moveSharePreview(1);
-        const track = document.getElementById("shareTrack");
-        track.addEventListener("scroll", updateShareNavigation, { passive: true });
-        track.addEventListener("keydown", event => {
-          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-            event.preventDefault();
-            moveSharePreview(event.key === "ArrowLeft" ? -1 : 1);
-          }
-        });
-        if (typeof ResizeObserver === "function") {
-          state.observer = new ResizeObserver(updateShareNavigation);
-          state.observer.observe(track);
-        }
-        updateSharePreviewUi(state);
+        updateDirectShareUi(state);
         try {
+          if (!liff.isLoggedIn() || !liff.isApiAvailable("shareTargetPicker")) {
+            state.blocked = true;
+            throw new Error("目前無法使用 LINE 分享，請確認已登入、分享功能已啟用，或關閉後從 LINE 重新開啟。");
+          }
           const result = await api(action, payload);
-          if (sharePreviewState !== state) return;
+          if (directShareState !== state) return;
           if (!result.ok) {
             if (result.code === "NOT_BOUND" || result.needsVerification) {
               renderNeedVerifyOrError({ ...result, code: "NOT_BOUND" });
@@ -1539,34 +1501,95 @@ SOFTWARE.
             }
             throw new Error(result.message || "無法取得分享內容。");
           }
-          const messages = validateSharePreviewMessages(result.messages);
-          renderSharePreviewCards(messages, state);
-          state.messages = messages;
-          state.status = "已載入 " + sharePreviewBubbles(messages).length + " 張卡片";
+          state.messages = validateShareMessages(result.messages);
+          state.status = state.autoPending ? "正在開啟 LINE 通訊錄..." : "名片已準備好。";
         } catch (err) {
-          if (sharePreviewState !== state) return;
+          if (directShareState !== state) return;
+          state.autoPending = false;
           state.error = errorText(err);
-          state.status = "無法讀取分享內容，請重新讀取。";
+          state.status = "暫時無法開啟分享。";
         } finally {
-          if (sharePreviewState === state) {
+          if (directShareState === state) {
             state.loading = false;
-            updateSharePreviewUi(state);
+            updateDirectShareUi(state);
+            maybeOpenSharePicker();
           }
         }
       }
 
-      function reloadSharePreview() {
-        const state = sharePreviewState;
+      function reloadDirectShare() {
+        const state = directShareState;
         if (!state || state.loading || state.sharing) return;
-        return loadSharePreview(state.title, state.action, state.payload);
+        // Reload never silently resends after a cancelled or uncertain share.
+        return loadDirectShare(state.title, state.action, state.payload, false);
       }
 
-      function sharePreviewBubbles(messages) {
+      function maybeOpenSharePicker() {
+        const state = directShareState;
+        if (!state || !state.autoPending || document.hidden || state.loading ||
+            state.sharing || state.blocked || !state.messages.length) return;
+        state.autoPending = false;
+        return shareDirectMessages();
+      }
+
+      function updateDirectShareUi(state) {
+        if (directShareState !== state) return;
+        const busy = state.loading || state.sharing;
+        const send = document.getElementById("shareSend");
+        send.hidden = !state.messages.length || busy || state.autoPending;
+        send.disabled = busy || state.blocked || !state.messages.length;
+        document.getElementById("shareReload").hidden = busy;
+        document.getElementById("shareReload").disabled = busy;
+        document.getElementById("shareError").hidden = !state.error;
+        document.getElementById("shareError").textContent = state.error;
+        document.getElementById("shareStatus").textContent = state.status;
+        document.getElementById("shareLabel").textContent = state.attempted ? "再次分享" : "開啟 LINE 通訊錄";
+        document.getElementById("shareDone").hidden = busy || !state.success;
+      }
+
+      async function shareDirectMessages() {
+        const state = directShareState;
+        if (!state || state.loading || state.sharing || state.blocked || !state.messages.length) return;
+        state.autoPending = false;
+        state.attempted = true;
+        state.sharing = true;
+        state.success = false;
+        state.error = "";
+        state.status = "請在 LINE 選擇好友並確認傳送。";
+        updateDirectShareUi(state);
+        try {
+          if (!liff.isLoggedIn() || !liff.isApiAvailable("shareTargetPicker")) {
+            state.blocked = true;
+            throw new Error("目前無法使用 LINE 分享，請關閉後從 LINE 重新開啟。");
+          }
+          const result = await liff.shareTargetPicker(state.messages, { isMultiple: true });
+          if (directShareState !== state) return;
+          if (result && result.status === "success") {
+            state.success = true;
+            state.status = "已送出分享。";
+          } else if (!result) {
+            state.status = "已取消分享。";
+          } else {
+            throw new Error("無法確認分享結果，請先查看聊天室，避免重複傳送。");
+          }
+        } catch (err) {
+          if (directShareState !== state) return;
+          state.error = errorText(err);
+          state.status = "通訊錄未能完成分享。請先確認聊天室；若尚未送出，可按「再次分享」。";
+        } finally {
+          if (directShareState === state) {
+            state.sharing = false;
+            updateDirectShareUi(state);
+          }
+        }
+      }
+
+      function shareMessageBubbles(messages) {
         return messages.flatMap(message => message.contents.type === "carousel"
           ? message.contents.contents : [message.contents]);
       }
 
-      function isSharePreviewUrl(value, image) {
+      function isShareMessageUrl(value, image) {
         try {
           const url = new URL(value);
           if (url.username || url.password) return false;
@@ -1574,13 +1597,13 @@ SOFTWARE.
         } catch (err) { return false; }
       }
 
-      function validateSharePreviewMessages(messages) {
+      function validateShareMessages(messages) {
         if (!Array.isArray(messages) || !messages.length) throw new Error("目前沒有可分享的卡片內容。");
         if (messages.length > 5) throw new Error("分享訊息數量超過限制。");
         let count = 0;
         function visit(node, depth) {
           if (!node || typeof node !== "object" || depth > 16 || ++count > 1500) throw new Error("卡片格式錯誤或內容過於複雜。");
-          if (node.action && (node.action.type !== "uri" || !isSharePreviewUrl(node.action.uri, false))) {
+          if (node.action && (node.action.type !== "uri" || !isShareMessageUrl(node.action.uri, false))) {
             throw new Error("卡片包含不支援的按鈕連結。");
           }
           switch (node.type) {
@@ -1595,10 +1618,10 @@ SOFTWARE.
               if (!node.action || typeof node.action.label !== "string") throw new Error("卡片按鈕格式錯誤。");
               break;
             case "image": case "icon":
-              if (!isSharePreviewUrl(node.url, true)) throw new Error("卡片圖片必須使用 HTTPS 網址。");
+              if (!isShareMessageUrl(node.url, true)) throw new Error("卡片圖片必須使用 HTTPS 網址。");
               break;
             case "separator": case "spacer": case "filler": break;
-            default: throw new Error("此卡片含有尚不支援預覽的元件。");
+            default: throw new Error("此卡片含有尚不支援分享的元件。");
           }
         }
         messages.forEach(message => {
@@ -1606,193 +1629,15 @@ SOFTWARE.
               !message.altText.trim() || !message.contents || !["bubble", "carousel"].includes(message.contents.type)) {
             throw new Error("未取得有效的 Flex 卡片。");
           }
-          const bubbles = sharePreviewBubbles([message]);
+          const bubbles = shareMessageBubbles([message]);
           if (!Array.isArray(bubbles) || !bubbles.length || bubbles.length > 12) throw new Error("卡片張數不正確。");
           bubbles.forEach(bubble => {
             if (!bubble || bubble.type !== "bubble" || (!bubble.body && !bubble.hero)) throw new Error("卡片內容不完整。");
             ["header", "hero", "body", "footer"].forEach(section => { if (bubble[section]) visit(bubble[section], 0); });
           });
         });
-        // Preview and outgoing messages use one snapshot; layout changes never mutate it.
+        // Keep the outgoing payload independent of the API response.
         return JSON.parse(JSON.stringify(messages));
-      }
-
-      function sharePreviewLength(value, map, fallback) {
-        if (Object.prototype.hasOwnProperty.call(map, value)) return map[value];
-        return typeof value === "string" && /^\d+(\.\d+)?px$/.test(value)
-          ? Math.min(parseFloat(value), 120) : fallback;
-      }
-
-      function sharePreviewColor(value) {
-        return typeof value === "string" && /^#[\da-f]{6}([\da-f]{2})?$/i.test(value) ? value : "";
-      }
-
-      function renderSharePreviewNode(node, state, hero) {
-        const spacing = { none: 0, xs: 2, sm: 4, md: 8, lg: 12, xl: 16, xxl: 20 };
-        const sizes = { xxs: 11, xs: 12, sm: 13, md: 15, lg: 18, xl: 20, xxl: 24, "3xl": 28, "4xl": 32, "5xl": 40 };
-        let element = document.createElement(node.type === "text" ? "p" : "div");
-        if (node.type === "box") {
-          element.className = "share-flex-box";
-          const vertical = node.layout === "vertical";
-          element.style.flexDirection = vertical ? "column" : "row";
-          if (node.layout === "baseline") element.style.alignItems = "baseline";
-          node.contents.forEach((child, index) => {
-            const item = renderSharePreviewNode(child, state, false);
-            item.style[vertical ? "marginTop" : "marginLeft"] =
-              sharePreviewLength(child.margin, spacing, index ? sharePreviewLength(node.spacing, spacing, 0) : 0) + "px";
-            element.appendChild(item);
-          });
-          ["All", "Top", "Bottom", "Start", "End"].forEach(side => {
-            const value = sharePreviewLength(node["padding" + side], spacing, null);
-            const property = { All: "padding", Top: "paddingTop", Bottom: "paddingBottom", Start: "paddingLeft", End: "paddingRight" }[side];
-            if (value !== null) element.style[property] = value + "px";
-          });
-        } else if (node.type === "text") {
-          element.className = "share-flex-text";
-          element.textContent = node.text;
-          element.style.fontSize = sharePreviewLength(node.size, sizes, 15) + "px";
-          element.style.fontWeight = node.weight === "bold" ? "700" : "400";
-          element.style.color = sharePreviewColor(node.color) || "#333333";
-          element.style.textAlign = ["start", "end", "center"].includes(node.align) ? node.align : "start";
-        } else if (node.type === "button") {
-          element.className = "share-flex-button";
-          element.textContent = node.action.label;
-          element.style.background = node.style === "primary" ? sharePreviewColor(node.color) || "#0f7b63" : "#f0f4f1";
-          element.style.color = node.style === "primary" ? "#ffffff" : sharePreviewColor(node.color) || "#0f7b63";
-          // Card actions are visual only; previewing never calls a phone or follows a link.
-        } else if (node.type === "image" || node.type === "icon") {
-          element.className = "share-image";
-          const ratio = String(node.aspectRatio || "").match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/);
-          element.style.aspectRatio = ratio && Number(ratio[1]) > 0 && Number(ratio[2]) > 0 ? ratio[1] + "/" + ratio[2] : "1/1";
-          if (node.type === "icon") element.style.width = sharePreviewLength(node.size, sizes, 15) + "px";
-          const img = document.createElement("img");
-          img.alt = "卡片圖片";
-          img.decoding = "async";
-          img.loading = hero ? "eager" : "lazy";
-          img.referrerPolicy = "no-referrer";
-          img.style.objectFit = node.aspectMode === "fit" ? "contain" : "cover";
-          img.addEventListener("error", () => {
-            if (sharePreviewState !== state) return;
-            const fallback = document.createElement("div");
-            fallback.className = "share-image-error";
-            fallback.textContent = "圖片暫時無法顯示";
-            element.replaceChildren(fallback);
-            document.getElementById("shareImageWarning").hidden = false;
-          }, { once: true });
-          img.src = node.url;
-          element.appendChild(img);
-        } else if (node.type === "separator") {
-          element.style.borderTop = "1px solid " + (sharePreviewColor(node.color) || "#d7dde5");
-        } else {
-          element.style.minHeight = sharePreviewLength(node.size, spacing, 8) + "px";
-        }
-        if (Number.isFinite(node.flex) && node.flex >= 0) element.style.flex = node.flex + " 1 0%";
-        if (sharePreviewColor(node.backgroundColor)) element.style.backgroundColor = node.backgroundColor;
-        return element;
-      }
-
-      function renderSharePreviewCards(messages, state) {
-        const bubbles = sharePreviewBubbles(messages);
-        const fragment = document.createDocumentFragment();
-        bubbles.forEach((bubble, index) => {
-          const card = document.createElement("article");
-          card.className = "share-card";
-          card.setAttribute("aria-label", "第 " + (index + 1) + " 張卡片");
-          ["header", "hero", "body", "footer"].forEach(section => {
-            if (!bubble[section]) return;
-            const element = renderSharePreviewNode(bubble[section], state, section === "hero" && index === 0);
-            if (section !== "hero") element.classList.add("share-card-section");
-            if (section === "body") element.classList.add("share-card-body");
-            const style = bubble.styles && bubble.styles[section];
-            if (style && sharePreviewColor(style.backgroundColor)) element.style.backgroundColor = style.backgroundColor;
-            card.appendChild(element);
-          });
-          fragment.appendChild(card);
-        });
-        const track = document.getElementById("shareTrack");
-        track.replaceChildren(fragment);
-        track.classList.toggle("single", bubbles.length === 1);
-        track.hidden = false;
-        track.scrollLeft = 0;
-        document.getElementById("shareSummaryText").textContent = messages.map(message => message.altText).join("\n");
-        document.getElementById("shareSummary").hidden = false;
-        document.getElementById("shareNavigation").hidden = bubbles.length < 2;
-        updateShareNavigation();
-      }
-
-      function updateShareNavigation() {
-        const track = document.getElementById("shareTrack");
-        if (!track || !track.children.length) return;
-        const left = track.getBoundingClientRect().left + 2;
-        const cards = Array.from(track.children);
-        const active = cards.reduce((best, card, index) =>
-          Math.abs(card.getBoundingClientRect().left - left) < Math.abs(cards[best].getBoundingClientRect().left - left) ? index : best, 0);
-        track.dataset.active = String(active);
-        document.getElementById("shareCounter").textContent = track.scrollWidth <= track.clientWidth + 2
-          ? cards.length + " 張" : (active + 1) + " / " + cards.length;
-        document.getElementById("sharePrevious").disabled = track.scrollLeft <= 2;
-        document.getElementById("shareNext").disabled = track.scrollLeft >= track.scrollWidth - track.clientWidth - 2;
-      }
-
-      function moveSharePreview(direction) {
-        const track = document.getElementById("shareTrack");
-        if (!track) return;
-        const index = Math.max(0, Math.min(track.children.length - 1, Number(track.dataset.active || 0) + direction));
-        const card = track.children[index];
-        if (!card) return;
-        track.scrollTo({ left: track.scrollLeft + card.getBoundingClientRect().left - track.getBoundingClientRect().left - 2,
-          behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-      }
-
-      function updateSharePreviewUi(state) {
-        if (sharePreviewState !== state) return;
-        const busy = state.loading || state.sharing;
-        document.getElementById("shareSend").disabled = busy || !state.messages.length || state.blocked;
-        document.getElementById("shareReload").disabled = busy;
-        document.getElementById("shareRetry").disabled = busy;
-        document.getElementById("shareRetry").hidden = !state.error;
-        document.getElementById("shareError").hidden = !state.error;
-        document.getElementById("shareError").textContent = state.error;
-        document.getElementById("shareEmpty").hidden = !!state.messages.length;
-        document.getElementById("shareEmpty").textContent = state.loading ? "正在讀取分享內容..." : "目前無法顯示卡片";
-        document.getElementById("shareStatus").textContent = state.status;
-        document.getElementById("shareLabel").textContent = state.sharing ? "正在開啟 LINE..." : state.success ? "再次分享" : "選擇好友並分享";
-        document.getElementById("shareDone").hidden = !state.success;
-      }
-
-      async function sharePreviewCards() {
-        const state = sharePreviewState;
-        if (!state || state.loading || state.sharing || state.blocked || !state.messages.length) return;
-        state.sharing = true;
-        state.success = false;
-        state.error = "";
-        state.status = "請在 LINE 選擇對象並確認傳送。";
-        updateSharePreviewUi(state);
-        try {
-          if (!liff.isLoggedIn() || !liff.isApiAvailable("shareTargetPicker")) {
-            state.blocked = true;
-            throw new Error("目前無法使用 LINE 分享，請確認已登入、分享功能已啟用，或關閉後從 LINE 重新開啟。");
-          }
-          const result = await liff.shareTargetPicker(state.messages, { isMultiple: true });
-          if (sharePreviewState !== state) return;
-          if (result && result.status === "success") {
-            state.success = true;
-            state.status = "已送出分享。";
-          } else if (!result) {
-            state.status = "已取消分享，卡片仍保留在此頁。";
-          } else {
-            throw new Error("無法確認分享結果，請先查看聊天室，避免重複傳送。");
-          }
-        } catch (err) {
-          if (sharePreviewState !== state) return;
-          state.error = errorText(err);
-          state.status = "尚未確認分享成功，不會自動重送。";
-        } finally {
-          if (sharePreviewState === state) {
-            state.sharing = false;
-            updateSharePreviewUi(state);
-          }
-        }
       }
 
       function closeLiffWindow() {
@@ -1831,9 +1676,13 @@ SOFTWARE.
         `;
       }
 
-      function renderEventType(eventType) {
+      function normalizedEventType(eventType) {
         const type = String(eventType || "").trim();
-        const value = ["理監事會議", "地區活動"].includes(type) ? type : "一般活動";
+        return ["理監事會議", "地區活動"].includes(type) ? type : "一般活動";
+      }
+
+      function renderEventType(eventType) {
+        const value = normalizedEventType(eventType);
         const badgeClass = value === "理監事會議" ? "committee" : value === "地區活動" ? "district" : "general";
         return `
           <p class="meta event-type-line">
@@ -2091,8 +1940,7 @@ SOFTWARE.
       }
 
       function setView(html) {
-        if (sharePreviewState && sharePreviewState.observer) sharePreviewState.observer.disconnect();
-        sharePreviewState = null;
+        directShareState = null;
         document.getElementById("view").innerHTML = html;
       }
 
