@@ -42,6 +42,8 @@ SOFTWARE.
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>新竹西南扶輪社</title>
     <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <link rel="preconnect" href="https://script.google.com">
+    <link rel="preconnect" href="https://script.googleusercontent.com">
     <style>
       :root {
         --bg: #f4f6f8;
@@ -456,6 +458,13 @@ SOFTWARE.
       .share-direct button:focus-visible { outline: 3px solid #69a9dc; outline-offset: 3px; }
       .share-icon { width: 19px; height: 19px; flex: none; }
       .share-error { color: var(--danger); white-space: pre-wrap; overflow-wrap: anywhere; }
+      .share-progress { display: flex; align-items: center; gap: 10px; }
+      .share-progress.is-busy::before {
+        content: ""; width: 16px; height: 16px; flex: none; border: 2px solid #ccd6d1;
+        border-top-color: #277253; border-radius: 50%; animation: share-spin .75s linear infinite;
+      }
+      @keyframes share-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .share-progress.is-busy::before { animation: none; } }
 
     </style>
   </head>
@@ -485,7 +494,7 @@ SOFTWARE.
       const EVENT_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
       const EVENT_DETAIL_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
       const participationStates = {};
-      const clubPerformance = { version: "1.14.0", liffInitMs: null, requests: [] };
+      const clubPerformance = { version: "1.14.1", liffInitMs: null, requests: [] };
 
       function getClubPerformanceDiagnostics() {
         return JSON.parse(JSON.stringify(clubPerformance));
@@ -500,6 +509,32 @@ SOFTWARE.
       let currentMember = null;
       let verificationSubmitting = false;
       let directShareState = null;
+      const PUBLIC_SHARE_TTL = 60 * 1000;
+      function publicShareKey() {
+        return "club_public_share:v1:" + JSON.stringify([APP_CONFIG.apiUrl, APP_CONFIG.liffId]);
+      }
+      function readPublicShare() {
+        try {
+          const key = publicShareKey();
+          const raw = localStorage.getItem(key);
+          if (!raw) return null;
+          if (raw.length <= 100000) {
+            const entry = JSON.parse(raw);
+            const age = Date.now() - entry.at;
+            if (Number.isFinite(entry.at) && age >= 0 && age < PUBLIC_SHARE_TTL) {
+              return validateShareMessages(entry.messages);
+            }
+          }
+          localStorage.removeItem(key);
+        } catch { try { localStorage.removeItem(publicShareKey()); } catch {} }
+        return null;
+      }
+      function writePublicShare(messages) {
+        try {
+          const raw = JSON.stringify({ at: Date.now(), messages });
+          if (raw.length <= 100000) localStorage.setItem(publicShareKey(), raw);
+        } catch {}
+      }
       let eventCatalog = [];
       let eventYearFilter = String(initialEventPeriod.year);
       let eventMonthFilter = "all";
@@ -527,8 +562,14 @@ SOFTWARE.
             return;
           }
 
-          setView(`<div class="notice">正在連結Google資料庫，安全驗證中，請稍後...</div>`);
+          const isShare = ["shareClub", "shareProfile", "shareDirectoryProfile", "shareExecutiveSecretary"].includes(currentPage);
+          setView(isShare ? '<p class="notice share-progress is-busy" role="status">正在準備 LINE 分享…</p>' :
+            '<div class="notice">正在連結 LINE…</div>');
           const lineStartedAt = Date.now();
+          // Only the public club card can be requested before LINE confirms the viewer.
+          const publicLoad = currentPage === "shareClub" && !readPublicShare()
+            ? api("getClubShareMessages", {}).catch(err => ({ ok: false, message: errorText(err) }))
+            : null;
           try { await liff.init({ liffId: APP_CONFIG.liffId }); }
           finally { clubPerformance.liffInitMs = Date.now() - lineStartedAt; }
 
@@ -538,7 +579,6 @@ SOFTWARE.
             return;
           }
 
-          setView(`<div class="notice">正在取得 LINE 身分...</div>`);
           idToken = liff.getIDToken();
           if (!idToken) {
             renderError("無法取得 LINE ID Token。請確認 LIFF scope 有勾選 openid。");
@@ -552,7 +592,7 @@ SOFTWARE.
           if (currentPage === "verify") {
             await renderVerify();
           } else if (currentPage === "shareClub") {
-            await renderClubShare();
+            await renderClubShare(publicLoad);
           } else if (currentPage === "shareProfile") {
             await renderPersonalShare();
           } else if (currentPage === "shareDirectoryProfile" && currentDirectoryMemberKey) {
@@ -651,7 +691,6 @@ SOFTWARE.
         const cached = readEventCache();
         if (cached) {
           renderEventCatalog(null, cached.events);
-          setEventRefreshStatus("顯示上次活動資料，更新中...");
         } else {
           setView(`<div class="notice">載入活動中...</div>`);
         }
@@ -678,12 +717,12 @@ SOFTWARE.
         const freshEvents = result.events || [];
         writeEventCache(result.member, freshEvents);
         currentMember = result.member;
-        scheduleEventDetailPrefetch(freshEvents);
         if (cached && eventCatalogsMatch(cached.events, freshEvents)) {
           setEventRefreshStatus("");
-          return;
+        } else {
+          renderEventCatalog(result.member, freshEvents);
         }
-        renderEventCatalog(result.member, freshEvents);
+        scheduleEventDetailPrefetch(eventCatalog);
       }
 
       function renderEventCatalog(member, events) {
@@ -978,7 +1017,8 @@ SOFTWARE.
 
       function scheduleEventDetailPrefetch(events) {
         cancelEventPrefetch();
-        const candidates = sortEventsForDisplay(events || []).filter(matchesEventFilters).slice(0, 1);
+        const first = (events || []).find(matchesEventFilters);
+        const candidates = first ? [first] : [];
 
         candidates.forEach(event => {
           if (readEventDetailCache(event.eventId)) return;
@@ -1106,7 +1146,6 @@ SOFTWARE.
         } else {
           setView(`<div class="notice">載入活動中...</div>`);
         }
-        if (cached || previewEvent) setEventRefreshStatus("顯示上次活動資料，更新中...");
 
         let result;
         try {
@@ -1436,8 +1475,8 @@ SOFTWARE.
         if (currentPage === "event" && String(currentEventId) === String(eventId)) await renderEvent(eventId);
       }
 
-      function renderClubShare() {
-        return loadDirectShare("社務轉分享", "getClubShareMessages", {});
+      function renderClubShare(publicLoad) {
+        return loadDirectShare("社務轉分享", "getClubShareMessages", {}, true, publicLoad);
       }
 
       function renderPersonalShare() {
@@ -1465,7 +1504,7 @@ SOFTWARE.
         return '<svg class="share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[name] + '</svg>';
       }
 
-      async function loadDirectShare(title, action, payload, autoOpen = true) {
+      async function loadDirectShare(title, action, payload, autoOpen = true, publicLoad = null) {
         if (directShareState && directShareState.sharing) return;
         const state = { title, action, payload, messages: [], loading: true, sharing: false,
           autoPending: autoOpen, attempted: false, success: false, blocked: false,
@@ -1473,7 +1512,7 @@ SOFTWARE.
         setTitle(title, false);
         setView(`
           <section id="directShare" class="share-direct" aria-label="${escapeAttr(title)}">
-            <p id="shareStatus" class="notice" role="status" aria-live="polite"></p>
+            <p id="shareStatus" class="notice share-progress" role="status" aria-live="polite"></p>
             <p id="shareError" class="share-error" role="alert" hidden></p>
             <div class="actions">
               <button id="shareSend" class="primary" type="button" hidden>${shareIcon("share")}<span id="shareLabel">開啟 LINE 通訊錄</span></button>
@@ -1492,7 +1531,12 @@ SOFTWARE.
             state.blocked = true;
             throw new Error("目前無法使用 LINE 分享，請確認已登入、分享功能已啟用，或關閉後從 LINE 重新開啟。");
           }
-          const result = await api(action, payload);
+          const isPublic = action === "getClubShareMessages";
+          if (isPublic && !autoOpen) {
+            try { localStorage.removeItem(publicShareKey()); } catch {}
+          }
+          const cached = isPublic && autoOpen && readPublicShare();
+          const result = cached ? { ok: true, messages: cached } : await (publicLoad || api(action, payload));
           if (directShareState !== state) return;
           if (!result.ok) {
             if (result.code === "NOT_BOUND" || result.needsVerification) {
@@ -1501,7 +1545,8 @@ SOFTWARE.
             }
             throw new Error(result.message || "無法取得分享內容。");
           }
-          state.messages = validateShareMessages(result.messages);
+          state.messages = cached || validateShareMessages(result.messages);
+          if (isPublic && !cached) writePublicShare(state.messages);
           state.status = state.autoPending ? "正在開啟 LINE 通訊錄..." : "名片已準備好。";
         } catch (err) {
           if (directShareState !== state) return;
@@ -1543,6 +1588,7 @@ SOFTWARE.
         document.getElementById("shareError").hidden = !state.error;
         document.getElementById("shareError").textContent = state.error;
         document.getElementById("shareStatus").textContent = state.status;
+        document.getElementById("shareStatus").classList.toggle("is-busy", busy);
         document.getElementById("shareLabel").textContent = state.attempted ? "再次分享" : "開啟 LINE 通訊錄";
         document.getElementById("shareDone").hidden = busy || !state.success;
       }
